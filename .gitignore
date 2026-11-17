@@ -47,3 +47,9 @@ example
 
 # 테스트 증적 (실제 이메일·연락처·초대 코드 포함 — 커밋하지 않음)
 test-evidence/
+
+# Claude 작업 산출물 폴더 (테스트 보고서 등 — 실제 개인정보가 들어 있을 수 있음)
+Claude outputs/
+tests/db/node_modules/
+tests/db/result.json
+tests/ui/shots/

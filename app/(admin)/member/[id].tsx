@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { PassCard } from '@/components/PassCard';
 import { Badge, BRAND, EmptyView, ErrorView, LoadingView, Screen, SectionTitle } from '@/components/ui';
@@ -99,8 +99,10 @@ export default function MemberDetailScreen() {
           onRetry={() => void detailQuery.refetch()}
         />
       ) : (
+        <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={detailQuery.isRefetching}
@@ -230,6 +232,7 @@ export default function MemberDetailScreen() {
             </View>
           )}
         </ScrollView>
+        </KeyboardAvoidingView>
       )}
     </Screen>
   );
@@ -295,6 +298,16 @@ function MemoEditor({ person, studioId, editable }: { person: StudioPerson; stud
   const updateMemo = useUpdateMemberMemo();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(person.memo ?? '');
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
+
+  // 편집을 열면 입력칸에 커서를 둔다. 웹에서 autoFocus 를 쓰면 브라우저가 화면 전체를 끌어올려
+  // 레이아웃이 밀리므로 preventScroll 로 포커스만 준다
+  useEffect(() => {
+    if (!editing) return;
+    const el = inputRef.current as unknown as { focus: (o?: { preventScroll?: boolean }) => void } | null;
+    if (Platform.OS === 'web') el?.focus({ preventScroll: true });
+    else el?.focus();
+  }, [editing]);
 
   if (!editing) {
     if (!person.memo && !editable) return null;
@@ -330,8 +343,8 @@ function MemoEditor({ person, studioId, editable }: { person: StudioPerson; stud
         onChangeText={setDraft}
         placeholder="부상 이력, 선호 시간 등"
         placeholderTextColor="#A8A29E"
+        ref={inputRef}
         multiline
-        autoFocus
         maxLength={500}
         className="min-h-[72px] rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
         style={{ textAlignVertical: 'top' }}

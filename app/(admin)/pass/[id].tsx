@@ -202,7 +202,7 @@ function LogRow({ log, first }: { log: PassLog; first: boolean }) {
         {log.memo ? <Text className="mt-0.5 text-xs text-stone-500">{log.memo}</Text> : null}
         <Text className="mt-0.5 text-xs text-stone-400">
           {dayjs(log.created_at).format('YYYY.MM.DD HH:mm')}
-          {log.actor?.name ? ` · ${log.actor.name}` : ''}
+          {log.actor?.name ? ` · ${log.actor.name}` : log.reason === 'waitlist_promotion' ? ' · 자동' : ''}
         </Text>
       </View>
       <View className="items-end">

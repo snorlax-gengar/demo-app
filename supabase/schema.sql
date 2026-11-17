@@ -455,6 +455,10 @@ begin
          set status = 'confirmed', pass_id = v_pass_id, promoted_at = now()
        where id = v_wait.id;
       perform public._apply_pass_delta(v_pass_id, -1, 'waitlist_promotion', v_wait.id);
+      -- 자동 승격은 사람이 처리한 게 아니므로, 빈자리를 만든 사람(취소·정원 변경한 사람) 이름을 남기지 않는다
+      update public.pass_logs
+         set actor_id = null, memo = '빈자리가 생겨 대기 순번대로 자동 확정'
+       where booking_id = v_wait.id and reason = 'waitlist_promotion' and actor_id is not null;
 
       v_promoted := true;
       v_count := v_count + 1;
