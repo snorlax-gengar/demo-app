@@ -34,9 +34,10 @@ export default function RootLayout() {
   const router = useRouter();
   useEffect(() => {
     if (Platform.OS === 'web' || !userId || !accountLoaded) return;
+    // 알림을 누르면 알림함으로 (알림에 다른 경로가 지정돼 있으면 그쪽으로)
     const open = (data: unknown) => {
       const path = pathFromNotification(data);
-      if (path) router.push(path as never);
+      router.push((path && path !== '/' ? path : '/notifications') as never);
       void queryClient.invalidateQueries({ queryKey: ['notifications'] });
     };
     const last = Notifications.getLastNotificationResponse();

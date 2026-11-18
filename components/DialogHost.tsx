@@ -46,6 +46,7 @@ export function DialogHost() {
                   key={`${b.text}-${i}`}
                   onPress={() => resolve(b)}
                   accessibilityRole="button"
+                  accessibilityLabel={b.text ?? '확인'}
                   className={`items-center rounded-2xl py-3.5 active:opacity-80 ${tone.box} ${horizontal ? 'flex-1' : ''}`}>
                   <Text className={`text-base font-semibold ${tone.text}`}>{b.text ?? '확인'}</Text>
                 </Pressable>

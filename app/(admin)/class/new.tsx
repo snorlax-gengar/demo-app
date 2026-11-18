@@ -49,6 +49,8 @@ export default function NewClassScreen() {
   const [location, setLocation] = useState('');
   const [repeatWeeks, setRepeatWeeks] = useState(1);
 
+  // 주소로 바로 연 경우(뒤로 갈 화면 없음)에는 달력으로
+  const close = () => (router.canGoBack() ? router.back() : router.replace('/calendar'));
   const effectiveCapacity = type === 'private' ? 1 : capacity;
   const finalTitle = title.trim() || defaultTitle(type, effectiveCapacity);
   const start = date.hour(hour).minute(minute).second(0).millisecond(0);
@@ -90,7 +92,7 @@ export default function NewClassScreen() {
     createClasses.mutate(rows, {
       onSuccess: (count) => {
         showDialog('등록했습니다', `${finalTitle} ${count}회를 달력에 추가했습니다.`);
-        router.back();
+        close();
       },
       onError: (error) =>
         showDialog(
@@ -104,7 +106,7 @@ export default function NewClassScreen() {
     <Screen>
       <View className="flex-row items-center px-3 py-2">
         <Pressable
-          onPress={() => router.back()}
+          onPress={close}
           accessibilityLabel="닫기"
           className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
           <Ionicons name="close" size={24} color="#1B1F1E" />
