@@ -10,6 +10,8 @@ export default function AdminLayout() {
       <Stack.Screen name="class/new" />
       <Stack.Screen name="book/[classId]" />
       <Stack.Screen name="revenue" />
+      <Stack.Screen name="products/index" />
+      <Stack.Screen name="products/edit" />
       <Stack.Screen name="pass/new" />
       <Stack.Screen name="pass/[id]" />
     </Stack>

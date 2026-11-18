@@ -259,7 +259,102 @@ with sync_playwright() as p:
         nxt = pg.get_by_label('다음 달').get_attribute('aria-disabled')
         return f'카드 1,020,000원(67%), 그룹 1,070,000원·1:1 450,000원, 이전 달 {prev}, 이번 달에서 다음 달 버튼 비활성={nxt}'
 
-    @case('TC-U14', '매출', '강사에게는 매출 카드가 없고, 주소로 들어가도 "원장만 볼 수 있습니다"', '카드 0개 / 잠금 안내, 결제 조회 요청 0건')
+    @case('TC-U15', '수강권 상품', '원장이 상품을 등록하면 목록에 "횟수·기간·가격"으로 보인다 (이름 비우면 자동 이름)', '"그룹 20회 · 3개월" 480,000원 등록')
+    def _():
+        pg.goto(BASE + '/profile')
+        pg.get_by_label('수강권 상품 관리').click()
+        pg.get_by_text('등록된 상품이 없습니다').wait_for(timeout=15000)
+        shot('TC-U15a')
+        pg.get_by_label('상품 추가').click()
+        pg.get_by_text('상품 추가', exact=True).wait_for(timeout=10000)
+        pg.get_by_role('radio', name='20회').click()
+        pg.get_by_role('radio', name='3개월').click()
+        pg.get_by_label('가격').fill('480000')
+        pg.wait_for_timeout(300)
+        shot('TC-U15b')
+        pg.get_by_text('등록', exact=True).click()
+        pg.get_by_text('상품을 등록했습니다').wait_for(timeout=5000)
+        pg.get_by_role('button', name='확인').click()
+        pg.get_by_text('그룹 20회 · 3개월', exact=True).wait_for(timeout=10000)
+        pg.wait_for_timeout(300)
+        shot('TC-U15')
+        row = pg.inner_text('body')
+        assert '480,000원' in row and '20회 · 3개월' in row
+        return '자동 이름 "그룹 20회 · 3개월", 20회 · 3개월 · 480,000원으로 목록 표시'
+
+    @case('TC-U16', '수강권 상품', '일 단위 체험권을 등록하고, 수정 화면에서 숨기면 "숨긴 상품"으로 내려간다', '"체험 1회" 1회 · 14일 · 30,000원 → 숨김')
+    def _():
+        pg.get_by_label('상품 추가').click()
+        pg.get_by_text('상품 추가', exact=True).wait_for(timeout=10000)
+        pg.get_by_role('radio', name='1회').click()
+        pg.get_by_role('radio', name='일 단위').click()
+        pg.get_by_role('radio', name='14일').click()
+        pg.get_by_label('가격').fill('30000')
+        pg.get_by_label('상품 이름').fill('체험 1회')
+        pg.get_by_text('등록', exact=True).click()
+        pg.get_by_text('상품을 등록했습니다').wait_for(timeout=5000)
+        pg.get_by_role('button', name='확인').click()
+        pg.get_by_text('체험 1회', exact=True).wait_for(timeout=10000)
+        before = pg.inner_text('body')
+        assert '1회 · 14일' in before and '30,000원' in before
+        # 수정 → 숨김
+        pg.get_by_text('체험 1회', exact=True).click()
+        pg.get_by_text('상품 수정').wait_for(timeout=10000)
+        pg.get_by_label('발급 화면에 보이기').click()
+        pg.get_by_text('저장', exact=True).click()
+        pg.get_by_text('수정했습니다').wait_for(timeout=5000)
+        pg.get_by_role('button', name='확인').click()
+        pg.get_by_text('숨긴 상품 1개').wait_for(timeout=10000)
+        pg.wait_for_timeout(300)
+        shot('TC-U16')
+        log = json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read())
+        return '체험 1회(1회 · 14일 · 30,000원) 등록 → 숨김 후 "숨긴 상품 1개" 아래 표시'
+
+    @case('TC-U17', '수강권 상품', '발급 화면에서 상품을 고르면 유형·횟수·이름·기간·금액이 채워지고, 숨긴 상품은 안 보인다', '상품 1개만 표시 → 선택 시 20회·3개월·480,000원, 만료일=시작일+3개월-1일 → 발급 요청 값 일치')
+    def _():
+        pg.goto(BASE + '/pass/new?memberId=mm3')
+        pg.get_by_text('상품에서 고르기').wait_for(timeout=15000)
+        n = pg.locator('[aria-label^="상품 "]').count()
+        assert n == 1, f'보이는 상품 {n}개 (숨긴 상품 제외여야 함)'
+        pg.get_by_label('상품 그룹 20회 · 3개월').click()
+        pg.wait_for_timeout(300)
+        page = pg.inner_text('body')
+        import datetime
+        start = datetime.date.today()
+        m = start.month - 1 + 3
+        y, m = start.year + m // 12, m % 12 + 1
+        import calendar
+        d = min(start.day, calendar.monthrange(y, m)[1])
+        exp = datetime.date(y, m, d) - datetime.timedelta(days=1)
+        assert '480,000' in page, '금액 자동 입력'
+        assert exp.strftime('%Y.%m.%d') in page, f'만료일 {exp}'
+        shot('TC-U17a')
+        pg.get_by_text('발급', exact=True).last.click()
+        pg.get_by_role('button', name='발급').last.click()
+        pg.wait_for_timeout(800)
+        log = json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read())
+        call = [x for x in log if x['fn'] == 'issue_pass'][-1]['args']
+        assert call['p_total'] == 20 and call['p_amount'] == 480000 and call['p_class_type'] == 'group' and call['p_name'] == '그룹 20회 · 3개월', call
+        assert call['p_expires_on'] == exp.isoformat(), call
+        shot('TC-U17')
+        return f"보이는 상품 1개, 발급 요청: {call['p_name']} / {call['p_total']}회 / {call['p_starts_on']}~{call['p_expires_on']} / {call['p_amount']:,}원"
+
+    @case('TC-U18', '수강권 상품', '일 단위로 바꾸면 만료일이 시작일+N-1일로 계산된다', '14일 선택 → 만료일 = 오늘+13일')
+    def _():
+        pg.goto(BASE + '/pass/new?memberId=mm3')
+        pg.get_by_text('유효기간').wait_for(timeout=15000)
+        pg.get_by_role('radio', name='일 단위').click()
+        pg.get_by_role('radio', name='14일').click()
+        pg.wait_for_timeout(300)
+        import datetime
+        exp = datetime.date.today() + datetime.timedelta(days=13)
+        page = pg.inner_text('body')
+        assert exp.strftime('%Y.%m.%d') in page and '14일' in page
+        pg.get_by_text('유효기간').scroll_into_view_if_needed()
+        shot('TC-U18')
+        return f'14일권 만료일 {exp.strftime("%Y.%m.%d")} (오늘+13일)'
+
+    @case('TC-U14', '매출', '강사에게는 매출·수강권 상품 카드가 없고, 매출 주소로 들어가도 "원장만 볼 수 있습니다"', '카드 0개 / 잠금 안내, 결제 조회 요청 0건')
     def _():
         pg.goto(BASE + '/profile')
         pg.get_by_text('로그아웃', exact=True).last.click()
@@ -268,7 +363,7 @@ with sync_playwright() as p:
         pg.wait_for_selector('text=오늘의 내 수업', timeout=30000)
         pg.goto(BASE + '/profile')
         pg.get_by_text('내 스튜디오').wait_for(timeout=15000)
-        cards = pg.get_by_label('매출 보기').count()
+        cards = pg.get_by_label('매출 보기').count() + pg.get_by_label('수강권 상품 관리').count()
         reqs = []
         pg.on('request', lambda r: reqs.append(r.url) if 'pass_payments' in r.url else None)
         pg.goto(BASE + '/revenue')
@@ -277,7 +372,7 @@ with sync_playwright() as p:
         shot('TC-U14')
         assert cards == 0, f'카드 {cards}'
         assert not reqs, reqs
-        return f'매출 카드 {cards}개, /revenue → 잠금 안내, 결제 조회 요청 {len(reqs)}건'
+        return f'매출·상품 카드 {cards}개, /revenue → 잠금 안내, 결제 조회 요청 {len(reqs)}건'
 
     @case('TC-U10', '공통', '테스트 내내 브라우저 기본 팝업(confirm/alert)과 화면 오류가 없다', '브라우저 기본 팝업 0건, 페이지 오류 0건')
     def _():

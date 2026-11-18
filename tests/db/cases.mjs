@@ -338,6 +338,35 @@ await tc('TC-D35', '매출', '결제일 기본값은 한국 날짜다 (UTC 날�
   return `결제일 ${r.p} (한국 날짜 ${r.k}), 기본값 ${d}`;
 });
 
+// 10) 수강권 상품 (패치 008)
+const addProduct = (uid, v) => rpc(uid, `insert into pass_products(studio_id,name,class_type,total_count,duration_value,duration_unit,price,created_by)
+  values ($1,$2,$3,$4,$5,$6,$7,$8) returning *`, [A.id, v.name, v.type, v.count, v.dur, v.unit, v.price ?? null, uid]);
+await tc('TC-D37', '수강권 상품', '원장·실장은 상품을 등록·수정·숨김할 수 있다', '원장 등록, 실장 등록·가격 수정·숨김, 목록 2건(숨김 포함)', async () => {
+  const a = (await addProduct(P.owner, { name: '리포머 그룹 20회', type: 'group', count: 20, dur: 3, unit: 'month', price: 480000 }))[0];
+  const b = (await addProduct(P.manager, { name: '체험 1회', type: 'group', count: 1, dur: 14, unit: 'day', price: 30000 }))[0];
+  await rpc(P.manager, `update pass_products set price=450000 where id=$1`, [a.id]);
+  await rpc(P.manager, `update pass_products set is_active=false where id=$1`, [b.id]);
+  const list = await rpc(P.owner, `select name, price, is_active, duration_unit from pass_products where studio_id=$1 order by created_at`, [A.id]);
+  assert.equal(list.length, 2); assert.equal(list[0].price, 450000); assert.equal(list[1].is_active, false); assert.equal(list[1].duration_unit, 'day');
+  return list.map((r) => `${r.name}(${r.price.toLocaleString()}원${r.is_active ? '' : ', 숨김'})`).join(', ');
+});
+await tc('TC-D38', '수강권 상품', '강사·회원·다른 스튜디오 원장은 상품을 볼 수도, 등록할 수도 없다', '조회 0건, 등록 거절', async () => {
+  for (const uid of [P.t1, m1, P.ownerB]) {
+    const n = (await rpc(uid, `select count(*)::int c from pass_products where studio_id=$1`, [A.id]))[0].c;
+    assert.equal(n, 0);
+    await rejects(addProduct(uid, { name: 'x', type: 'group', count: 1, dur: 1, unit: 'month' }), /row-level security/);
+  }
+  return '강사·회원·B원장 조회 0건, 등록 모두 거절';
+});
+await tc('TC-D39', '수강권 상품', '상품은 삭제할 수 없고(숨김만), 잘못된 값은 저장되지 않는다', '삭제 권한 없음 / 25개월·0회·빈 이름·음수 가격 거절', async () => {
+  await rejects(rpc(P.owner, `delete from pass_products where studio_id=$1`, [A.id]), /permission denied/);
+  await rejects(addProduct(P.owner, { name: '25개월', type: 'group', count: 10, dur: 25, unit: 'month' }), /check constraint/);
+  await rejects(addProduct(P.owner, { name: '0회', type: 'group', count: 0, dur: 1, unit: 'month' }), /check constraint/);
+  await rejects(addProduct(P.owner, { name: '  ', type: 'group', count: 1, dur: 1, unit: 'month' }), /check constraint/);
+  await rejects(addProduct(P.owner, { name: '음수', type: 'group', count: 1, dur: 1, unit: 'month', price: -1 }), /check constraint/);
+  await rejects(rpc(P.manager, `update pass_products set studio_id=$2 where studio_id=$1`, [A.id, B.id]), /permission denied/);
+});
+
 // 8) 스튜디오 격리
 await tc('TC-D28', '스튜디오 격리', '다른 스튜디오 원장은 이 스튜디오의 예약·수강권·회원을 볼 수 없다', '조회 결과 0건', async () => {
   const r = await asRole(P.ownerB, async () => ({

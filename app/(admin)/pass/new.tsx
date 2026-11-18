@@ -15,15 +15,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip, Choice, Field, Row, Stepper } from '@/components/form';
 import { ErrorView, LoadingView, Screen } from '@/components/ui';
-import { useIssuePass, useMemberDetail } from '@/hooks/queries';
+import { useIssuePass, useMemberDetail, usePassProducts } from '@/hooks/queries';
 import { useStudio } from '@/hooks/useStudio';
 import { dayjs, formatDate } from '@/lib/date';
 import { showDialog } from '@/lib/dialog';
 import { PAYMENT_METHOD_LABEL, formatWon } from '@/lib/labels';
+import { PRODUCT_LIMITS, durationLabel, expiresFrom, type DurationUnit, type PassProduct } from '@/lib/products';
 import type { ClassType, PaymentMethod } from '@/lib/types';
 
 const COUNT_PRESETS = [1, 4, 8, 10, 20, 30];
-const PERIOD_PRESETS = [1, 2, 3, 6, 12]; // 개월
+const PERIODS: Record<DurationUnit, number[]> = { month: [1, 2, 3, 6, 12], day: [7, 14, 30, 60] };
 const METHODS: PaymentMethod[] = ['card', 'cash', 'transfer', 'other'];
 
 const defaultName = (type: ClassType, count: number) => `${type === 'private' ? '1:1 개인' : '그룹'} ${count}회권`;
@@ -41,15 +42,36 @@ export default function IssuePassScreen() {
   const [count, setCount] = useState(10);
   const [name, setName] = useState('');
   const [startsOn, setStartsOn] = useState(() => dayjs().startOf('day'));
-  const [months, setMonths] = useState(3);
+  const [unit, setUnit] = useState<DurationUnit>('month');
+  const [duration, setDuration] = useState(3);
+  const [productId, setProductId] = useState<string | null>(null);
+  const productsQuery = usePassProducts(studioId, isAdmin);
+  const products = (productsQuery.data ?? []).filter((p) => p.is_active);
   const [amountText, setAmountText] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('card');
   const [memo, setMemo] = useState('');
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/members'));
 
-  // 3개월권을 11/17 에 시작하면 2/16 까지
-  const expiresOn = startsOn.add(months, 'month').subtract(1, 'day');
+  // 3개월권을 11/17 에 시작하면 2/16 까지, 14일권은 11/30 까지
+  const expiresOn = expiresFrom(startsOn, duration, unit);
+  const maxDuration = unit === 'month' ? PRODUCT_LIMITS.months : PRODUCT_LIMITS.days;
+
+  /** 상품을 고르면 유형·횟수·이름·기간·금액을 채운다 (채운 뒤 자유롭게 수정 가능) */
+  const pickProduct = (p: PassProduct) => {
+    setProductId(p.id);
+    setType(p.class_type);
+    setCount(p.total_count);
+    setName(p.name);
+    setUnit(p.duration_unit);
+    setDuration(p.duration_value);
+    setAmountText(p.price === null ? '' : String(p.price));
+  };
+  const switchUnit = (next: DurationUnit) => {
+    if (next === unit) return;
+    setUnit(next);
+    setDuration(next === 'month' ? 1 : 14);
+  };
   const finalName = name.trim() || defaultName(type, count);
   const amount = amountText ? Number(amountText) : null;
 
@@ -122,6 +144,40 @@ export default function IssuePassScreen() {
               <Text className="ml-2 text-sm text-stone-500">{member.phone ?? ''}</Text>
             </View>
 
+            {products.length > 0 ? (
+              <Field label="상품에서 고르기">
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                  {products.map((p) => {
+                    const on = productId === p.id;
+                    return (
+                      <Pressable
+                        key={p.id}
+                        onPress={() => pickProduct(p)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: on }}
+                        accessibilityLabel={`상품 ${p.name}`}
+                        className={`w-44 rounded-2xl border-2 px-3.5 py-3 ${on ? 'border-brand-600 bg-brand-50' : 'border-transparent bg-white'}`}>
+                        <Text className={`text-sm font-bold ${on ? 'text-brand-700' : 'text-ink'}`} numberOfLines={1}>
+                          {p.name}
+                        </Text>
+                        <Text className="mt-0.5 text-xs text-stone-500">
+                          {p.class_type === 'private' ? '1:1' : '그룹'} · {p.total_count}회 · {durationLabel(p.duration_value, p.duration_unit)}
+                        </Text>
+                        <Text className="mt-1 text-sm font-semibold text-ink">{p.price === null ? '가격 미정' : formatWon(p.price)}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+                <Text className="mt-2 text-xs text-stone-400">고르면 아래 칸이 채워집니다. 채운 뒤에도 바꿀 수 있어요.</Text>
+              </Field>
+            ) : (
+              <Pressable onPress={() => router.push('/(admin)/products')} className="mt-4 flex-row items-center rounded-2xl border border-dashed border-stone-300 px-4 py-3 active:opacity-70">
+                <Ionicons name="pricetags-outline" size={16} color="#78716C" />
+                <Text className="ml-2 flex-1 text-sm text-stone-500">자주 쓰는 수강권을 상품으로 등록하면 골라서 바로 발급할 수 있어요</Text>
+                <Ionicons name="chevron-forward" size={16} color="#A8A29E" />
+              </Pressable>
+            )}
+
             <Field label="수강권 유형">
               <View className="flex-row gap-2">
                 <Choice label="1:1 개인" sub="1:1 수업 예약용" active={type === 'private'} onPress={() => setType('private')} />
@@ -157,13 +213,34 @@ export default function IssuePassScreen() {
             </Field>
 
             <Field label="유효기간">
+              <View className="mb-3 flex-row rounded-full bg-stone-200 p-1">
+                {(['month', 'day'] as const).map((u) => (
+                  <Pressable
+                    key={u}
+                    onPress={() => switchUnit(u)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: unit === u }}
+                    className={`flex-1 items-center rounded-full py-2 ${unit === u ? 'bg-white' : ''}`}>
+                    <Text className={`text-sm font-semibold ${unit === u ? 'text-ink' : 'text-stone-500'}`}>{u === 'month' ? '개월 단위' : '일 단위'}</Text>
+                  </Pressable>
+                ))}
+              </View>
               <View className="flex-row flex-wrap gap-2">
-                {PERIOD_PRESETS.map((m) => (
-                  <Chip key={m} label={`${m}개월`} active={months === m} onPress={() => setMonths(m)} large />
+                {PERIODS[unit].map((v) => (
+                  <Chip key={v} label={durationLabel(v, unit)} active={duration === v} onPress={() => setDuration(v)} large />
                 ))}
               </View>
               <View className="mt-3 rounded-2xl bg-white px-4">
-                <Row label="시작일">
+                <Row label="기간">
+                  <Stepper
+                    value={durationLabel(duration, unit)}
+                    onMinus={() => setDuration((d) => Math.max(1, d - 1))}
+                    onPlus={() => setDuration((d) => Math.min(maxDuration, d + 1))}
+                    minusDisabled={duration <= 1}
+                    plusDisabled={duration >= maxDuration}
+                  />
+                </Row>
+                <Row label="시작일" border>
                   <Stepper
                     value={formatDate(startsOn.toISOString())}
                     onMinus={() => setStartsOn((d) => d.subtract(1, 'day'))}
@@ -220,7 +297,7 @@ export default function IssuePassScreen() {
               {amount !== null ? ` · ${formatWon(amount)}` : ''}
             </Text>
             <Text className="mt-0.5 text-sm text-stone-500">
-              {formatDate(startsOn.toISOString())} ~ {formatDate(expiresOn.toISOString())} · {months}개월
+              {formatDate(startsOn.toISOString())} ~ {formatDate(expiresOn.toISOString())} · {durationLabel(duration, unit)}
             </Text>
             <Pressable
               onPress={submit}

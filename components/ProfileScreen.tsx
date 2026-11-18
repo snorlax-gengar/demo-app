@@ -107,6 +107,24 @@ export function ProfileScreen() {
           </Pressable>
         ) : null}
 
+        {/* 수강권 상품 (원장·관리자) */}
+        {isAdmin ? (
+          <Pressable
+            onPress={() => router.push('/(admin)/products')}
+            accessibilityRole="button"
+            accessibilityLabel="수강권 상품 관리"
+            className="mt-4 flex-row items-center rounded-3xl bg-white p-5 active:opacity-70">
+            <View className="h-11 w-11 items-center justify-center rounded-full bg-brand-50">
+              <Ionicons name="pricetags-outline" size={20} color="#24766A" />
+            </View>
+            <View className="ml-4 flex-1">
+              <Text className="text-base font-bold text-ink">수강권 상품 관리</Text>
+              <Text className="mt-0.5 text-sm text-stone-500">횟수·기간·가격을 등록해 두고 발급 때 골라 쓰기</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#A8A29E" />
+          </Pressable>
+        ) : null}
+
         {/* 초대 코드 (원장·관리자) */}
         {isAdmin ? (
           <View className="mt-4 rounded-3xl bg-brand-700 p-5">

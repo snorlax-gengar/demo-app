@@ -76,6 +76,7 @@ const passLogs = {
   ],
 };
 const rpcLog = [];
+const products = [];
 // 매출용 결제 기록: 이번 달 5건(합계 1,520,000) / 지난달 2건(합계 1,200,000) → 26.7% 증가
 const ym = (off) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + off); return d.toISOString().slice(0, 7); };
 const pay = (id, pass_id, member_id, amount, method, ymOff, day, memo = null) => ({ id, pass_id, member_id, amount, method, paid_on: `${ym(ymOff)}-${String(day).padStart(2, '0')}`, memo });
@@ -153,6 +154,13 @@ http.createServer(async (req, res) => {
     }
     if (table === 'passes' && q.id) return out(passes.filter((x) => x.id === eq(q.id)).map((x) => ({ ...x, member: { id: x.member_id, name: profileOf(x.member_id)?.name } })));
     if (table === 'pass_logs') return out(passLogs[eq(q.pass_id)] ?? []);
+    if (table === 'pass_products') {
+      const role = members.find((m) => m.studio_id === 'S1' && m.user_id === me)?.role;
+      if (!['owner', 'manager'].includes(role)) return req.method === 'GET' ? out([]) : send(403, { code: '42501', message: 'new row violates row-level security policy' });
+      if (req.method === 'POST') { const row = { id: 'pr' + (products.length + 1), sort_order: 0, is_active: true, created_at: new Date(Date.now() + products.length).toISOString(), ...args }; products.push(row); return send(201, null); }
+      if (req.method === 'PATCH') { const row = products.find((x) => x.id === eq(q.id)); Object.assign(row, args); return send(204, null); }
+      return out(products.filter((x) => x.studio_id === eq(q.studio_id)).sort((a, b) => Number(b.is_active) - Number(a.is_active) || (a.created_at < b.created_at ? -1 : 1)));
+    }
     if (table === 'pass_payments') {
       if (q.pass_id) return out([]);
       const pp = url.searchParams.getAll('paid_on');

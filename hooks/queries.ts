@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { dayjs, type Dayjs } from '@/lib/date';
+import type { PassProduct, PassProductInput } from '@/lib/products';
 import type { RevenueRow } from '@/lib/revenue';
 import { supabase } from '@/lib/supabase';
 import type {
@@ -602,5 +603,42 @@ export function useRevenue(studioId: string, month: Dayjs, enabled = true) {
         unpaidIssued: issued.filter((p) => !p.payments || p.payments.length === 0).length,
       };
     },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 원장·관리자 — 수강권 상품(가격표). 조회·등록·수정은 RLS 로 원장·관리자만, 삭제 대신 숨김
+// ---------------------------------------------------------------------------
+
+export function usePassProducts(studioId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['pass_products', studioId],
+    enabled: !!studioId && enabled,
+    queryFn: async (): Promise<PassProduct[]> => {
+      const { data, error } = await supabase
+        .from('pass_products')
+        .select('*')
+        .eq('studio_id', studioId)
+        .order('is_active', { ascending: false })
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+      if (error) throw toError(error);
+      return (data ?? []) as PassProduct[];
+    },
+  });
+}
+
+export function useSavePassProduct() {
+  const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => s.profile?.id);
+  return useMutation({
+    mutationFn: async (vars: { studioId: string; id?: string; values: PassProductInput }): Promise<void> => {
+      const values = { ...vars.values, name: vars.values.name.trim() };
+      const { error } = vars.id
+        ? await supabase.from('pass_products').update(values).eq('id', vars.id)
+        : await supabase.from('pass_products').insert({ ...values, studio_id: vars.studioId, created_by: userId });
+      if (error) throw toError(error);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['pass_products'] }),
   });
 }
