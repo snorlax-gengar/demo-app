@@ -440,6 +440,44 @@ with sync_playwright() as p:
         assert call['p_amount'] == 30000
         return f'결제 목록·합계 노출 0, 추가 요청 {call["p_amount"]:,}원 성공'
 
+    @case('TC-U23', '알림', '직원(실장)의 내 정보에도 알림함이 있고, 알림이 없으면 안내가 보인다', '"알림" 줄 → "아직 알림이 없습니다", 웹에서는 휴대폰 알림 불가 안내')
+    def _():
+        pg.goto(BASE + '/profile')
+        pg.get_by_label('알림함').click()
+        pg.get_by_text('아직 알림이 없습니다').wait_for(timeout=15000)
+        note = pg.locator('text=이 기기(웹·시뮬레이터)에서는 휴대폰 알림을 받을 수 없어요. 알림은 여기에서 확인하세요.').locator('visible=true').count()
+        shot('TC-U23')
+        assert note == 1
+        return '알림함 빈 안내 표시, 웹 안내 문구 표시'
+
+    @case('TC-U22', '알림', '회원 홈의 종 아이콘에 안 읽은 알림 수가 보이고, 알림함을 열면 목록이 보이고 잠시 뒤 읽음 처리된다', '종 "2" → 알림 3건(새 알림 2) → 읽음 처리 요청 → 돌아오면 숫자 사라짐')
+    def _():
+        pg.goto(BASE + '/profile')
+        pg.get_by_text('로그아웃', exact=True).last.click()
+        pg.get_by_role('button', name='로그아웃').last.click()
+        login('member@x.com')
+        pg.wait_for_selector('text=내 수강권', timeout=30000)
+        bell = pg.get_by_label('알림 2개 새로 옴')
+        bell.wait_for(timeout=15000)
+        shot('TC-U22a')
+        bell.click()
+        pg.get_by_text('대기에서 예약이 확정됐어요').wait_for(timeout=15000)
+        rows = pg.locator('[aria-label^="알림 "]').locator('visible=true').count()
+        dots = pg.get_by_label('새 알림').locator('visible=true').count()
+        shot('TC-U22')
+        pg.wait_for_timeout(2500)
+        log = json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read())
+        marked = [x for x in log if x['fn'] == 'mark_notifications_read']
+        pg.get_by_label('뒤로').click()
+        pg.wait_for_selector('text=내 수강권', timeout=15000)
+        pg.wait_for_timeout(800)
+        after = pg.get_by_label('알림', exact=True).locator('visible=true').count()
+        shot('TC-U22b')
+        assert rows == 3 and dots == 2, f'목록 {rows}, 새 알림 {dots}'
+        assert len(marked) == 1 and marked[0]['args'] == {'p_ids': None}, marked
+        assert after == 1, '읽음 후 종 숫자 남음'
+        return f'종 배지 2 → 알림 {rows}건(새 알림 {dots}) → 읽음 처리 1회 → 종 배지 사라짐'
+
     @case('TC-U10', '공통', '테스트 내내 브라우저 기본 팝업(confirm/alert)과 화면 오류가 없다', '브라우저 기본 팝업 0건, 페이지 오류 0건')
     def _():
         real = [e for e in errors if 'favicon' not in e]

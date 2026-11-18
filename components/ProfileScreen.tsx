@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, Text, View } from 'react-native';
 
 import { Screen } from '@/components/ui';
-import { useRegenerateInviteCode, useRevenue } from '@/hooks/queries';
+import { useNotifications, useRegenerateInviteCode, useRevenue } from '@/hooks/queries';
+import { PUSH_STATUS_TEXT, usePushStore } from '@/lib/push';
 import { useStudio } from '@/hooks/useStudio';
 import { dayjs, formatDate } from '@/lib/date';
 import { showDialog } from '@/lib/dialog';
@@ -20,6 +21,8 @@ export function ProfileScreen() {
   const signOut = useAuthStore((s) => s.signOut);
   const { studioId, studio, role, isAdmin, isOwner } = useStudio();
   const thisMonth = useMemo(() => dayjs().startOf('month'), []);
+  const unread = (useNotifications().data ?? []).filter((n) => !n.read_at).length;
+  const pushStatus = usePushStore((s) => s.status);
   const revenue = useRevenue(studioId, thisMonth, isOwner);
   const regenerate = useRegenerateInviteCode();
 
@@ -86,6 +89,27 @@ export function ProfileScreen() {
             </Text>
           </View>
         </View>
+
+        {/* 알림함 (모든 역할) */}
+        <Pressable
+          onPress={() => router.push('/notifications')}
+          accessibilityRole="button"
+          accessibilityLabel="알림함"
+          className="mt-4 flex-row items-center rounded-3xl bg-white p-5 active:opacity-70">
+          <View className="h-11 w-11 items-center justify-center rounded-full bg-brand-50">
+            <Ionicons name="notifications-outline" size={20} color="#24766A" />
+          </View>
+          <View className="ml-4 flex-1">
+            <Text className="text-base font-bold text-ink">알림</Text>
+            <Text className="mt-0.5 text-sm text-stone-500">{PUSH_STATUS_TEXT[pushStatus].split('.')[0]}</Text>
+          </View>
+          {unread ? (
+            <View className="mr-2 min-w-[22px] items-center rounded-full bg-rose-500 px-1.5 py-0.5">
+              <Text className="text-xs font-bold text-white">{unread}</Text>
+            </View>
+          ) : null}
+          <Ionicons name="chevron-forward" size={20} color="#A8A29E" />
+        </Pressable>
 
         {/* 매출 (원장 전용) */}
         {isOwner ? (

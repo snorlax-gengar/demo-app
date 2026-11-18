@@ -388,6 +388,85 @@ await tc('TC-D41', '결제 추가', '강사·회원·다른 스튜디오 원장�
   await rejects(rpc(P.owner, `select * from add_pass_payment($1,10000,'bitcoin')`, [pass.id]), /결제 수단/);
 });
 
+// 12) 알림 (패치 010)
+const notes = (uid, since = 0) => q(`select id, kind, title, body, data from notifications where user_id=$1 and id > $2 order by id`, [uid, since]);
+const lastNoteId = async () => (await q(`select coalesce(max(id),0)::int m from notifications`))[0].m;
+await tc('TC-D42', '알림', '직원이 대신 예약·대기 신청하면 회원에게 알림이 쌓이고, 회원 본인 예약은 알리지 않는다', '대신 예약 → "예약이 확정됐어요"(한국 시간 표기), 대신 대기 → "대기 1번", 본인 예약 → 0건', async () => {
+  const c = await mkClass(P.t1, 30 * 24 * 60, 1 + 1, '알림 수업');
+  const before = await lastNoteId();
+  await book(P.owner, c.id, m1);            // 대신 예약(확정)
+  await book(m2, c.id);                      // 본인 예약 → 알림 없음
+  await book(P.manager, c.id, m3);           // 대신 대기
+  const n1 = await notes(m1, before), n2 = await notes(m2, before), n3 = await notes(m3, before);
+  assert.equal(n1.length, 1); assert.equal(n1[0].kind, 'booked_by_staff'); assert.equal(n1[0].title, '예약이 확정됐어요');
+  const kst = (await q(`select public._kst_label(starts_at) l from classes where id=$1`, [c.id]))[0].l;
+  assert.ok(n1[0].body.startsWith(kst + ' 알림 수업'), n1[0].body);
+  assert.match(kst, /^\d{1,2}월 \d{1,2}일 \([일월화수목금토]\) \d{2}:\d{2}$/);
+  assert.equal(n2.length, 0);
+  assert.equal(n3.length, 1); assert.equal(n3[0].kind, 'waitlisted_by_staff'); assert.match(n3[0].body, /대기 1번/);
+  assert.equal(n1[0].data.path, '/');
+  return `회원1 "${n1[0].title}" — ${n1[0].body.split('\n')[0]} / 회원2(본인) 0건 / 회원3 "${n3[0].title}" 대기 1번`;
+});
+await tc('TC-D43', '알림', '대기 자동 확정·직원 취소는 알리고, 회원 본인 취소는 알리지 않는다', '본인 취소 0건 → 대기자 "대기에서 예약이 확정됐어요" / 직원 취소 "예약이 취소됐어요 … 복구됐어요"', async () => {
+  const c = await mkClass(P.t2, 31 * 24 * 60, 1 + 1, '승격 알림');
+  const a = await book(m1, c.id); await book(m2, c.id); await book(m3, c.id); // m3 대기
+  const before = await lastNoteId();
+  await cancel(m1, a.id);                    // 본인 취소 → m1 알림 없음, m3 승격 알림
+  const b2 = (await q(`select id from bookings where class_id=$1 and member_id=$2`, [c.id, m2]))[0];
+  await cancel(P.owner, b2.id);              // 직원 취소(기본 복구)
+  const n1 = await notes(m1, before), n2 = await notes(m2, before), n3 = await notes(m3, before);
+  assert.equal(n1.length, 0);
+  assert.equal(n3.length, 1); assert.equal(n3[0].kind, 'promoted');
+  assert.equal(n2.length, 1); assert.equal(n2[0].kind, 'cancelled_by_staff'); assert.match(n2[0].body, /수강권 1회가 복구됐어요/);
+  return `본인 취소 0건 / 회원3 "${n3[0].title}" / 회원2 "${n2[0].title}" (${n2[0].body.split('\n')[1]})`;
+});
+await tc('TC-D44', '알림', '폐강하면 확정자는 "복구됐어요", 대기자는 "대기 신청도 취소" 알림을 받는다', '확정 2명 class_cancelled+복구 / 대기 1명 class_cancelled+대기 취소', async () => {
+  const c = await mkClass(P.t1, 32 * 24 * 60, 2, '폐강 알림');
+  await book(m1, c.id); await book(m2, c.id); await book(m3, c.id);
+  const before = await lastNoteId();
+  await rpc(P.owner, `select cancel_class($1)`, [c.id]);
+  const all = await q(`select user_id, kind, body from notifications where id > $1 order by id`, [before]);
+  assert.equal(all.length, 3); assert.ok(all.every((r) => r.kind === 'class_cancelled'));
+  const byUser = Object.fromEntries(all.map((r) => [r.user_id, r.body]));
+  assert.match(byUser[m1], /복구됐어요/); assert.match(byUser[m2], /복구됐어요/); assert.match(byUser[m3], /대기 신청도 함께 취소/);
+});
+await tc('TC-D45', '알림', '전날 알림은 내일(한국 날짜) 확정 예약에만 1번씩 쌓이고 다시 돌려도 중복되지 않는다', '내일 확정 2건만 생성(대기·폐강 제외) → 두 번째 실행 0건', async () => {
+  const mk = async (title, instr) => (await q(`insert into classes(studio_id,title,instructor_id,starts_at,ends_at,max_capacity,location)
+    values ($1,$2,$3, ((now() at time zone 'Asia/Seoul')::date + 1 + time '10:00') at time zone 'Asia/Seoul',
+                     ((now() at time zone 'Asia/Seoul')::date + 1 + time '10:50') at time zone 'Asia/Seoul', 2, 'A룸') returning *`, [A.id, title, instr]))[0];
+  const t1 = await mk('내일 수업', P.t1), t2 = await mk('내일 폐강', P.t2);
+  await book(m1, t1.id); await book(m2, t1.id); await book(m3, t1.id); // m3 대기
+  await book(m4, t2.id); await rpc(P.owner, `select cancel_class($1)`, [t2.id]);
+  const first = (await q(`select enqueue_class_reminders() n`))[0].n;
+  const second = (await q(`select enqueue_class_reminders() n`))[0].n;
+  const r = await q(`select user_id, title, body from notifications where kind='reminder' order by id`);
+  assert.equal(first, 2); assert.equal(second, 0);
+  assert.deepEqual(r.map((x) => x.user_id).sort(), [m1, m2].sort());
+  assert.equal(r[0].title, '내일 수업이 있어요'); assert.match(r[0].body, /10:00 내일 수업 · A룸/);
+  return `1차 ${first}건, 2차 ${second}건, "${r[0].title}" — ${r[0].body.split('\n')[0]}`;
+});
+await tc('TC-D46', '알림', '알림은 본인 것만 보이고 읽음 처리되며, 푸시 토큰은 본인 기기만 등록·해제된다', '본인만 조회·읽음 / 토큰 표 직접 조회 불가 / 잘못된 토큰 거절 / 같은 기기 다른 계정 로그인 시 주인 변경', async () => {
+  const mine = (await rpc(m1, `select count(*)::int c from notifications`))[0].c;
+  const all1 = (await q(`select count(*)::int c from notifications where user_id=$1`, [m1]))[0].c;
+  assert.equal(mine, all1);
+  const others = (await rpc(P.owner, `select count(*)::int c from notifications where user_id=$1`, [m1]))[0].c;
+  assert.equal(others, 0);
+  const read = (await rpc(m1, `select mark_notifications_read() n`))[0].n;
+  assert.equal(read, all1);
+  assert.equal((await q(`select count(*)::int c from notifications where user_id=$1 and read_at is null`, [m1]))[0].c, 0);
+  const tok = 'ExponentPushToken[test-device-1]';
+  await rpc(m1, `select register_push_token($1,'ios')`, [tok]);
+  await rejects(rpc(m1, `select count(*) from push_tokens`), /permission denied/);
+  await rejects(rpc(m1, `select register_push_token('abc','ios')`), /형식이 올바르지 않습니다/);
+  await rpc(m2, `select register_push_token($1,'ios')`, [tok]); // 같은 기기, 다른 계정
+  assert.equal((await q(`select user_id from push_tokens where token=$1`, [tok]))[0].user_id, m2);
+  await rpc(m1, `select unregister_push_token($1)`, [tok]);   // 남의 토큰은 못 지움
+  assert.equal((await q(`select count(*)::int c from push_tokens where token=$1`, [tok]))[0].c, 1);
+  await rpc(m2, `select unregister_push_token($1)`, [tok]);
+  assert.equal((await q(`select count(*)::int c from push_tokens where token=$1`, [tok]))[0].c, 0);
+  return `본인 알림 ${mine}건 조회·${read}건 읽음, 원장이 남의 알림 조회 0건, 토큰 주인 변경·해제 확인`;
+});
+
 // 8) 스튜디오 격리
 await tc('TC-D28', '스튜디오 격리', '다른 스튜디오 원장은 이 스튜디오의 예약·수강권·회원을 볼 수 없다', '조회 결과 0건', async () => {
   const r = await asRole(P.ownerB, async () => ({

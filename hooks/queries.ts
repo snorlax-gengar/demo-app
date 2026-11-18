@@ -661,3 +661,47 @@ export function useAddPayment() {
     onSettled: () => queryClient.invalidateQueries(),
   });
 }
+
+// ---------------------------------------------------------------------------
+// 알림함 (본인 것만 — RLS)
+// ---------------------------------------------------------------------------
+
+export interface AppNotification {
+  id: number;
+  kind: string;
+  title: string;
+  body: string;
+  data: { path?: string } | null;
+  created_at: string;
+  read_at: string | null;
+  studio: { name: string } | null;
+}
+
+export function useNotifications() {
+  const userId = useAuthStore((s) => s.session?.user.id);
+  return useQuery({
+    queryKey: ['notifications', userId],
+    enabled: !!userId,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<AppNotification[]> => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('id, kind, title, body, data, created_at, read_at, studio:studios!notifications_studio_id_fkey ( name )')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw toError(error);
+      return (data ?? []) as unknown as AppNotification[];
+    },
+  });
+}
+
+export function useMarkNotificationsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids?: number[]) => {
+      const { error } = await supabase.rpc('mark_notifications_read', { p_ids: ids ?? null });
+      if (error) throw toError(error);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+}

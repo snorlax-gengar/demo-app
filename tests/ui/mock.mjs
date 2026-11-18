@@ -78,6 +78,12 @@ const passLogs = {
   ],
 };
 const rpcLog = [];
+// 알림함: 회원 김하늘(m1)에게 2건(안 읽음), 1건(읽음)
+const notifications = [
+  { id: 3, user_id: 'm1', kind: 'promoted', title: '대기에서 예약이 확정됐어요', body: '11월 20일 (금) 19:00 4:1 그룹 리포머\n자리가 나서 자동으로 확정됐어요. 수강권 1회가 차감됐어요.', data: { path: '/' }, created_at: new Date(now - 0.2 * H).toISOString(), read_at: null, studio_id: 'S1' },
+  { id: 2, user_id: 'm1', kind: 'reminder', title: '내일 수업이 있어요', body: '11월 19일 (목) 10:00 1:1 개인 레슨 · A룸\n데모 필라테스 · 못 오시면 24시간 전까지 앱에서 취소해 주세요.', data: { path: '/' }, created_at: new Date(now - 14 * H).toISOString(), read_at: null, studio_id: 'S1' },
+  { id: 1, user_id: 'm1', kind: 'cancelled_by_staff', title: '예약이 취소됐어요', body: '11월 15일 (일) 11:00 4:1 그룹 리포머\n데모 필라테스에서 취소했어요. 수강권 1회가 복구됐어요.', data: { path: '/' }, created_at: new Date(now - 72 * H).toISOString(), read_at: new Date(now - 70 * H).toISOString(), studio_id: 'S1' },
+];
 const products = [];
 // 매출용 결제 기록: 이번 달 5건(합계 1,520,000) / 지난달 2건(합계 1,200,000) → 26.7% 증가
 const ym = (off) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + off); return d.toISOString().slice(0, 7); };
@@ -141,6 +147,11 @@ http.createServer(async (req, res) => {
     if (table === 'rpc/regenerate_invite_code') { const s = studios[args.p_studio_id]; s.invite_code = 'RG' + String(++codeSeq).padStart(4, '0'); return send(200, s.invite_code); }
     if (table === 'rpc/set_member_role') { const m = members.find((x) => x.studio_id === args.p_studio_id && x.user_id === args.p_user_id); m.role = args.p_role; return send(200, m); }
     if (table.startsWith('rpc/')) rpcLog.push({ fn: table.slice(4), args });
+    if (table === 'rpc/mark_notifications_read') {
+      let n = 0;
+      for (const x of notifications) if (x.user_id === me && !x.read_at && (!args.p_ids || args.p_ids.includes(x.id))) { x.read_at = new Date().toISOString(); n++; }
+      return send(200, n);
+    }
     if (table === 'rpc/add_pass_payment') {
       const ps = passes.find((x) => x.id === args.p_pass_id);
       const row = { id: 'pay' + (payments.length + 1), pass_id: ps.id, member_id: ps.member_id, amount: args.p_amount, method: args.p_method, paid_on: args.p_paid_on, memo: args.p_memo };
@@ -162,6 +173,7 @@ http.createServer(async (req, res) => {
     }
     if (table === 'passes' && q.id) return out(passes.filter((x) => x.id === eq(q.id)).map((x) => ({ ...x, member: { id: x.member_id, name: profileOf(x.member_id)?.name } })));
     if (table === 'pass_logs') return out(passLogs[eq(q.pass_id)] ?? []);
+    if (table === 'notifications') return out(notifications.filter((x) => x.user_id === me).map((x) => ({ ...x, studio: studios[x.studio_id] ? { name: studios[x.studio_id].name } : null })));
     if (table === 'pass_products') {
       const role = members.find((m) => m.studio_id === 'S1' && m.user_id === me)?.role;
       if (!['owner', 'manager'].includes(role)) return req.method === 'GET' ? out([]) : send(403, { code: '42501', message: 'new row violates row-level security policy' });

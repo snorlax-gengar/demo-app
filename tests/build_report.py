@@ -8,10 +8,10 @@ import sys
 D = os.path.dirname(os.path.abspath(__file__))
 OUT = sys.argv[1]
 load = lambda n: json.load(open(os.path.join(D, n)))  # noqa: E731
-db = load('r_new.json')['results'] + load('r_d29.json')['results'] + load('r_d36.json')['results']
+db = load('r_new.json')['results'] + load('r_d29.json')['results'] + load('r_d36.json')['results'] + load('r_push.json')['results']
 db.sort(key=lambda r: r['id'])
 before = {r['id']: r for r in load('r_before.json')['results']}
-patched = {r['id']: r for r in load('r_p59.json')['results']}
+patched = {r['id']: r for r in load('r_p510.json')['results']}
 ui = load('ui.json')['results']
 e = lambda s: html.escape(str(s).replace('Missing expected rejection.', '거절되어야 하는데 허용됨'))  # noqa: E731
 
@@ -38,7 +38,7 @@ rows_db = ''.join(
     f'<tr><td class="id">{e(r["id"])}</td><td>{e(r["area"])}</td><td>{e(r["title"])}</td><td>{e(r["expected"])}</td>'
     f'<td>{e(r["actual"])}</td><td>{badge(r["pass"])}</td></tr>' for r in db)
 
-extra_shots = {'TC-U19': ['TC-U19a.png', 'TC-U19.png'], 'TC-U15': ['TC-U15a.png', 'TC-U15b.png', 'TC-U15.png'], 'TC-U17': ['TC-U17a.png'], 'TC-U12': ['TC-U12a.png', 'TC-U12.png'], 'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
+extra_shots = {'TC-U22': ['TC-U22a.png', 'TC-U22.png', 'TC-U22b.png'], 'TC-U19': ['TC-U19a.png', 'TC-U19.png'], 'TC-U15': ['TC-U15a.png', 'TC-U15b.png', 'TC-U15.png'], 'TC-U17': ['TC-U17a.png'], 'TC-U12': ['TC-U12a.png', 'TC-U12.png'], 'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
 cards_ui = ''
 for r in ui:
     shots = extra_shots.get(r['id'], [r['shot']])
@@ -48,10 +48,10 @@ for r in ui:
                  f'<div class="pics">{pics}</div></div>')
 
 cmp_rows = ''
-for cid in ['TC-D09', 'TC-D30', 'TC-D33', 'TC-D35', 'TC-D37', 'TC-D40']:
+for cid in ['TC-D09', 'TC-D30', 'TC-D33', 'TC-D35', 'TC-D37', 'TC-D40', 'TC-D42']:
     b, a, p = before[cid], next(r for r in db if r['id'] == cid), patched[cid]
     cmp_rows += (f'<tr><td class="id">{cid}</td><td>수정 전 (GitHub 64e7e1b schema)</td><td>{e(b["actual"])}</td><td>{badge(b["pass"])}</td></tr>'
-                 f'<tr><td class="id">{cid}</td><td>수정 전 + 패치 005~009 (운영 DB 상태)</td><td>{e(p["actual"])}</td><td>{badge(p["pass"])}</td></tr>'
+                 f'<tr><td class="id">{cid}</td><td>수정 전 + 패치 005~010 (운영 DB 상태)</td><td>{e(p["actual"])}</td><td>{badge(p["pass"])}</td></tr>'
                  f'<tr><td class="id">{cid}</td><td>수정 후 schema.sql (새로 설치)</td><td>{e(a["actual"])}</td><td>{badge(a["pass"])}</td></tr>')
 before_total = f'{sum(r["pass"] for r in before.values())}/{len(before)}'
 patched_total = f'{sum(r["pass"] for r in patched.values())}/{len(patched)}'
@@ -66,6 +66,8 @@ manual = [
      '예약 시 그룹 20→19회, 취소 전 "24시간 이내 복구 안 됨" 경고, 취소 후 "복구되지 않았습니다" 안내, 잔여 19회 유지·다가오는 예약에서 사라짐', 'ok', [f'M04-{i}.jpg' for i in range(1, 7)]),
     ('TC-M05', '수강권 상품 → 발급 → 매출 (운영 DB, 원장)', '필라테스 나무에서 상품 "[테스트] 그룹 10회 1개월"(200,000원) 등록 → 테스트회원6 발급 화면에서 선택 → 발급 → 매출 반영',
      '상품 등록됨, 선택 시 10회·1개월(11/18~12/17)·200,000원 자동 입력, 발급 완료, 매출 11월 합계 500,000원(기존 11/17 300,000 + 11/18 200,000, 한국 날짜로 집계)', 'ok', [f'M05-{i}.jpg' for i in range(1, 6)]),
+    ('TC-M06', '발급 후 결제 추가 (운영 DB, 원장)', '테스트회원6의 "[테스트] 그룹 10회 1개월"에 50,000원·계좌이체·오늘·"[테스트] 잔금" 추가 → 결제 기록·매출 반영',
+     '결제일 + 버튼이 오늘에서 비활성, 추가 후 결제 기록 2건·합계 200,000→250,000원, 매출 11월 550,000원·3건·계좌이체 50,000원(9%)·내역에 "[테스트] 잔금" 표시', 'ok', [f'M06-{i}.jpg' for i in range(1, 5)]),
 ]
 def mrow(m):
     st = {'ok': '<span class="b ok">통과</span>', 'wait': '<span class="b wait">대기</span>'}[m[4]]
@@ -96,17 +98,19 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 <div class="sub">대상: snorlax-gengar/demo-app (main 64e7e1b 이후 변경분) · 작성: Claude</div>
 <div class="kpis">
 <div class="kpi"><b>{total_pass}/{total}</b><span>자동 테스트 통과</span></div>
-<div class="kpi"><b>{db_pass}/{len(db)}</b><span>DB 규칙 (실제 schema.sql)</span></div>
+<div class="kpi"><b>{db_pass}/{len(db)}</b><span>DB 규칙·푸시 발송 로직</span></div>
 <div class="kpi"><b>{ui_pass}/{len(ui)}</b><span>화면 (앱 웹 빌드)</span></div>
 <div class="kpi"><b>{manual_ok}/{len(manual)}</b><span>직접 확인 (실제 계정·DB)</span></div></div>
 
 <div class="note"><b>테스트 방법</b><br>
 · <b>DB 규칙</b>: 저장소의 <code>supabase/schema.sql</code>을 메모리 Postgres(PGlite)에 그대로 설치하고, 원장·실장·강사·회원 6명·다른 스튜디오 원장 계정으로 실제 함수(<code>book_class</code>, <code>cancel_booking</code>, <code>cancel_class</code>, <code>mark_attendance</code>, <code>issue_pass</code> 등)와 접근 권한(RLS)을 호출해 검증.<br>
 · <b>화면</b>: 앱을 웹으로 빌드해 가짜 Supabase 서버에 연결하고, 크롬(390×844 휴대폰 크기)으로 실제 클릭·입력하며 캡처. 가짜 데이터이므로 실제 개인정보는 없음.<br>
-· 실제 Supabase DB 와 실제 계정은 건드리지 않음.</div>
+· <b>푸시 발송</b>: Edge Function 의 발송 로직(core.ts)을 가짜 DB·가짜 Expo 서버로 Node 에서 실행해 검증(실제 휴대폰 발송은 설정 후 확인).<br>
+· 자동 테스트는 실제 Supabase DB 와 실제 계정을 건드리지 않음.</div>
 
 <h2>1. 이번 변경 사항</h2>
 <table><tr><th>구분</th><th>내용</th><th>관련 테스트</th></tr>
+<tr><td>신규 기능</td><td><b>알림 (알림함 + 휴대폰 푸시)</b>: 대신 예약·대신 대기·대기 자동 확정·직원 취소·폐강·수업 전날 20:00 에 회원에게 알림이 쌓임(본인이 한 일은 제외). 회원 홈 종 아이콘(안 읽은 수)·내 정보 "알림" → 알림함, 열면 읽음 처리. 휴대폰은 로그인 시 푸시 토큰 등록·로그아웃 시 해제, 알림을 누르면 앱으로 이동. 발송은 Edge Function <code>send-push</code>(Expo Push, 중복 방지·죽은 토큰 정리). 패치 <code>010_notifications.sql</code>, 설정 안내 <code>docs/push-setup.md</code></td><td class="id">TC-D42~D46, TC-P01~P04, TC-U22·U23</td></tr>
 <tr><td>신규 기능</td><td><b>발급 후 결제 추가</b>: 수강권 상세의 "결제 추가"로 나중에 받은 금액·분할 결제를 금액·수단·결제일(오늘까지, 1년 이내)·메모와 함께 기록 → 매출에 반영. 원장·실장이 추가 가능, 결제 목록은 원장만 보임. 패치 <code>009_add_pass_payment.sql</code></td><td class="id">TC-D40, TC-D41, TC-U19~U21</td></tr>
 <tr><td>신규 기능</td><td><b>수강권 상품(가격표)</b>: 원장·실장이 내 정보 → "수강권 상품 관리"에서 이름·유형·횟수·기간(개월/일)·가격을 등록·수정·숨김. 발급 화면 맨 위 "상품에서 고르기"로 고르면 유형·횟수·이름·기간·금액이 자동으로 채워짐(수정 가능). 발급 화면에 일 단위 기간 추가. 강사·회원은 상품을 볼 수 없음. 패치 <code>008_pass_products.sql</code></td><td class="id">TC-D37~D39, TC-U15~U18</td></tr>
 <tr><td>신규 기능</td><td><b>원장용 매출 화면</b>: 내 정보의 "이번 달 매출" 카드 → 월별 결제 합계·지난달 대비·건수·건당 평균·일별 막대·결제 수단/수강권 유형별·결제 내역(누르면 수강권 상세), 금액 없이 발급한 수강권 안내. 원장 외에는 카드가 없고 주소로 들어가도 잠금 (결제 기록은 DB 보안 규칙으로 원장만 조회)</td><td class="id">TC-D34, TC-U12~U14</td></tr>
@@ -120,7 +124,7 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 
 <h2>2. 수정 전/후 비교</h2>
 <table><tr><th>케이스</th><th>DB 상태</th><th>결과</th><th>판정</th></tr>{cmp_rows}</table>
-<p class="sub">전체 DB 케이스: 수정 전 {before_total} · 수정 전+패치 005~009 {patched_total} · 수정 후 {db_pass}/{len(db)}</p>
+<p class="sub">전체 DB 케이스: 수정 전 {before_total} · 수정 전+패치 005~010 {patched_total} · 수정 후 {db_pass}/{len(db)}</p>
 
 <h2>3. DB 규칙 테스트 ({db_pass}/{len(db)})</h2>
 <table><tr><th>ID</th><th>영역</th><th>시나리오</th><th>기대 결과</th><th>실제 결과</th><th>판정</th></tr>{rows_db}</table>
@@ -129,7 +133,7 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 {cards_ui}
 
 <h2>5. 직접 확인 (실제 계정·운영 DB)</h2>
-<p class="sub">로그인은 사용자가 직접 하고, TC-M04·M05 조작은 Claude 가 브라우저에서 진행. TC-M03 캡처 순서: 수정 전 입력칸 → 수정 후 입력칸 → 기본 팝업·하단 탭 → 메모 입력. 캡처의 이메일·연락처·초대 코드는 가림 처리.</p>
+<p class="sub">로그인은 사용자가 직접 하고, TC-M04~M06 조작은 Claude 가 브라우저에서 진행. TC-M03 캡처 순서: 수정 전 입력칸 → 수정 후 입력칸 → 기본 팝업·하단 탭 → 메모 입력. 캡처의 이메일·연락처·초대 코드는 가림 처리.</p>
 <table><tr><th>ID</th><th>항목</th><th>기대 결과</th><th>실제 결과</th><th>판정</th></tr>{rows_manual}</table>
 {manual_cards}
 <h2>6. 발견 사항</h2>

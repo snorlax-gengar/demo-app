@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 
 import { ClassCard } from '@/components/ClassCard';
+import { NotificationBell } from '@/components/NotificationBell';
 import { PassCard } from '@/components/PassCard';
 import { BRAND, EmptyView, ErrorView, LoadingView, Screen, SectionTitle } from '@/components/ui';
 import { useMyUpcomingClasses, usePasses } from '@/hooks/queries';
@@ -45,11 +46,14 @@ export default function MemberHomeScreen() {
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND} />}>
-        <View className="px-5 pt-4">
-          <Text className="text-sm text-stone-500">
-            {studio?.name} · {formatDay(dayjs())}
-          </Text>
-          <Text className="mt-1 text-2xl font-bold text-ink">{profile?.name || '회원'}님, 안녕하세요</Text>
+        <View className="flex-row items-start px-5 pt-4">
+          <View className="flex-1">
+            <Text className="text-sm text-stone-500">
+              {studio?.name} · {formatDay(dayjs())}
+            </Text>
+            <Text className="mt-1 text-2xl font-bold text-ink">{profile?.name || '회원'}님, 안녕하세요</Text>
+          </View>
+          <NotificationBell />
         </View>
 
         {/* ── 다중 수강권 카드: 잔여 횟수와 만료일을 홈 최상단에서 바로 확인 ── */}

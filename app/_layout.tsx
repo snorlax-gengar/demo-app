@@ -1,14 +1,16 @@
 import '../global.css';
 
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DialogHost } from '@/components/DialogHost';
 import { isStaffRole } from '@/lib/labels';
+import { pathFromNotification, registerForPush } from '@/lib/push';
 import { queryClient } from '@/lib/queryClient';
 import { useActiveMembership, useAuthStore } from '@/stores/auth';
 
@@ -21,6 +23,31 @@ export default function RootLayout() {
   const role = useActiveMembership()?.role ?? null;
 
   useEffect(() => useAuthStore.getState().initialize(), []);
+
+  // 로그인(또는 계정 전환)할 때마다 이 기기를 푸시 대상으로 등록
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (userId && accountLoaded) void registerForPush();
+  }, [userId, accountLoaded]);
+
+  // 알림을 누르면 해당 화면으로, 앱을 켠 채 알림이 오면 알림함 새로고침
+  const router = useRouter();
+  useEffect(() => {
+    if (Platform.OS === 'web' || !userId || !accountLoaded) return;
+    const open = (data: unknown) => {
+      const path = pathFromNotification(data);
+      if (path) router.push(path as never);
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    };
+    const last = Notifications.getLastNotificationResponse();
+    if (last) open(last.notification.request.content.data);
+    const tap = Notifications.addNotificationResponseReceivedListener((r) => open(r.notification.request.content.data));
+    const recv = Notifications.addNotificationReceivedListener(() => void queryClient.invalidateQueries({ queryKey: ['notifications'] }));
+    return () => {
+      tap.remove();
+      recv.remove();
+    };
+  }, [userId, accountLoaded, router]);
 
   // 세션 복원 중이거나, 로그인은 됐지만 아직 소속·역할을 모르는 동안에는 어떤 화면도 보여주지 않는다
   const booting = !initialized || (!!session && !accountLoaded);
@@ -49,9 +76,10 @@ export default function RootLayout() {
             <Stack.Protected guard={signedIn && hasStudio && isStaffRole(role)}>
               <Stack.Screen name="(admin)" />
             </Stack.Protected>
-            {/* 이미 소속이 있는 사람이 다른 스튜디오를 추가할 때 */}
+            {/* 이미 소속이 있는 사람이 다른 스튜디오를 추가할 때 / 알림함 */}
             <Stack.Protected guard={signedIn && hasStudio}>
               <Stack.Screen name="add-studio" />
+              <Stack.Screen name="notifications" />
             </Stack.Protected>
           </Stack>
         )}
