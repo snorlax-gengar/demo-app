@@ -4,7 +4,7 @@
 
 ## DB 규칙 테스트 (`tests/db`)
 `supabase/schema.sql` 을 메모리 Postgres(PGlite)에 설치하고, 원장·실장·강사·회원 계정으로
-예약·취소·대기 승격·폐강·출석·권한(RLS)을 검증합니다. 케이스 ID: TC-D01 ~ TC-D46 (+ patch_existing.mjs TC-D29, patch007.mjs TC-D36).
+예약·취소·대기 승격·폐강·출석·권한(RLS)을 검증합니다. 케이스 ID: TC-D01 ~ TC-D47 (+ patch_existing.mjs TC-D29, patch007.mjs TC-D36).
 
 ```bash
 cd tests/db

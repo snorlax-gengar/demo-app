@@ -11,7 +11,7 @@ load = lambda n: json.load(open(os.path.join(D, n)))  # noqa: E731
 db = load('r_new.json')['results'] + load('r_d29.json')['results'] + load('r_d36.json')['results'] + load('r_push.json')['results']
 db.sort(key=lambda r: r['id'])
 before = {r['id']: r for r in load('r_before.json')['results']}
-patched = {r['id']: r for r in load('r_p510.json')['results']}
+patched = {r['id']: r for r in load('r_p511.json')['results']}
 ui = load('ui.json')['results']
 e = lambda s: html.escape(str(s).replace('Missing expected rejection.', '거절되어야 하는데 허용됨'))  # noqa: E731
 
@@ -51,7 +51,7 @@ cmp_rows = ''
 for cid in ['TC-D09', 'TC-D30', 'TC-D33', 'TC-D35', 'TC-D37', 'TC-D40', 'TC-D42']:
     b, a, p = before[cid], next(r for r in db if r['id'] == cid), patched[cid]
     cmp_rows += (f'<tr><td class="id">{cid}</td><td>수정 전 (GitHub 64e7e1b schema)</td><td>{e(b["actual"])}</td><td>{badge(b["pass"])}</td></tr>'
-                 f'<tr><td class="id">{cid}</td><td>수정 전 + 패치 005~010 (운영 DB 상태)</td><td>{e(p["actual"])}</td><td>{badge(p["pass"])}</td></tr>'
+                 f'<tr><td class="id">{cid}</td><td>수정 전 + 패치 005~011 (운영 DB 상태)</td><td>{e(p["actual"])}</td><td>{badge(p["pass"])}</td></tr>'
                  f'<tr><td class="id">{cid}</td><td>수정 후 schema.sql (새로 설치)</td><td>{e(a["actual"])}</td><td>{badge(a["pass"])}</td></tr>')
 before_total = f'{sum(r["pass"] for r in before.values())}/{len(before)}'
 patched_total = f'{sum(r["pass"] for r in patched.values())}/{len(patched)}'
@@ -110,7 +110,7 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 
 <h2>1. 이번 변경 사항</h2>
 <table><tr><th>구분</th><th>내용</th><th>관련 테스트</th></tr>
-<tr><td>신규 기능</td><td><b>알림 (알림함 + 휴대폰 푸시)</b>: 대신 예약·대신 대기·대기 자동 확정·직원 취소·폐강·수업 전날 20:00 에 회원에게 알림이 쌓임(본인이 한 일은 제외). 회원 홈 종 아이콘(안 읽은 수)·내 정보 "알림" → 알림함, 열면 읽음 처리. 휴대폰은 로그인 시 푸시 토큰 등록·로그아웃 시 해제, 알림을 누르면 앱으로 이동. 발송은 Edge Function <code>send-push</code>(Expo Push, 중복 방지·죽은 토큰 정리). 패치 <code>010_notifications.sql</code>, 설정 안내 <code>docs/push-setup.md</code></td><td class="id">TC-D42~D46, TC-P01~P04, TC-U22·U23</td></tr>
+<tr><td>신규 기능</td><td><b>알림 (알림함 + 휴대폰 푸시)</b>: 대신 예약·대신 대기·대기 자동 확정·직원 취소·폐강·수업 전날 20:00 에 회원에게 알림이 쌓임(본인이 한 일은 제외). 회원 홈 종 아이콘(안 읽은 수)·내 정보 "알림" → 알림함, 열면 읽음 처리. 휴대폰은 로그인 시 푸시 토큰 등록·로그아웃 시 해제, 알림을 누르면 앱으로 이동. 발송은 Edge Function <code>send-push</code>(Expo Push, 중복 방지·죽은 토큰 정리)를 알림이 쌓일 때 DB 가 pg_net 으로 직접 호출(Database Webhooks 화면 불필요, 5분마다 재확인). 패치 <code>010_notifications.sql</code>·<code>011_push_hook.sql</code>, 설정 안내 <code>docs/push-setup.md</code></td><td class="id">TC-D42~D47, TC-P01~P04, TC-U22·U23</td></tr>
 <tr><td>신규 기능</td><td><b>발급 후 결제 추가</b>: 수강권 상세의 "결제 추가"로 나중에 받은 금액·분할 결제를 금액·수단·결제일(오늘까지, 1년 이내)·메모와 함께 기록 → 매출에 반영. 원장·실장이 추가 가능, 결제 목록은 원장만 보임. 패치 <code>009_add_pass_payment.sql</code></td><td class="id">TC-D40, TC-D41, TC-U19~U21</td></tr>
 <tr><td>신규 기능</td><td><b>수강권 상품(가격표)</b>: 원장·실장이 내 정보 → "수강권 상품 관리"에서 이름·유형·횟수·기간(개월/일)·가격을 등록·수정·숨김. 발급 화면 맨 위 "상품에서 고르기"로 고르면 유형·횟수·이름·기간·금액이 자동으로 채워짐(수정 가능). 발급 화면에 일 단위 기간 추가. 강사·회원은 상품을 볼 수 없음. 패치 <code>008_pass_products.sql</code></td><td class="id">TC-D37~D39, TC-U15~U18</td></tr>
 <tr><td>신규 기능</td><td><b>원장용 매출 화면</b>: 내 정보의 "이번 달 매출" 카드 → 월별 결제 합계·지난달 대비·건수·건당 평균·일별 막대·결제 수단/수강권 유형별·결제 내역(누르면 수강권 상세), 금액 없이 발급한 수강권 안내. 원장 외에는 카드가 없고 주소로 들어가도 잠금 (결제 기록은 DB 보안 규칙으로 원장만 조회)</td><td class="id">TC-D34, TC-U12~U14</td></tr>
@@ -124,7 +124,7 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 
 <h2>2. 수정 전/후 비교</h2>
 <table><tr><th>케이스</th><th>DB 상태</th><th>결과</th><th>판정</th></tr>{cmp_rows}</table>
-<p class="sub">전체 DB 케이스: 수정 전 {before_total} · 수정 전+패치 005~010 {patched_total} · 수정 후 {db_pass}/{len(db)}</p>
+<p class="sub">전체 DB 케이스: 수정 전 {before_total} · 수정 전+패치 005~011 {patched_total} · 수정 후 {db_pass}/{len(db)}</p>
 
 <h2>3. DB 규칙 테스트 ({db_pass}/{len(db)})</h2>
 <table><tr><th>ID</th><th>영역</th><th>시나리오</th><th>기대 결과</th><th>실제 결과</th><th>판정</th></tr>{rows_db}</table>

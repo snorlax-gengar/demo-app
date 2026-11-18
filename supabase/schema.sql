@@ -1553,6 +1553,66 @@ grant execute on function public.mark_notifications_read(bigint[]) to authentica
 
 
 -- -----------------------------------------------------------------------------
+-- 10-3. 알림이 쌓이면 Edge Function send-push 호출 (pg_net). Database Webhook 대신 SQL 로 연결
+--   · 함수 주소는 app_settings('send_push_url') 에 저장 (패치 011 실행 시 입력)
+--   · 한 번의 INSERT 문(예: 폐강으로 여러 명)에 호출 1번. 함수는 여러 번 불려도 같은 알림을 한 번만 보낸다
+-- -----------------------------------------------------------------------------
+do $$
+begin
+  create extension if not exists pg_net;   -- Supabase 에 기본 포함
+exception when others then
+  raise notice 'pg_net 을 켤 수 없어 푸시 자동 호출은 건너뜁니다: %', sqlerrm;
+end $$;
+
+create table if not exists public.app_settings (
+  key    text primary key,
+  value  text not null
+);
+alter table public.app_settings enable row level security;
+revoke all on public.app_settings from anon, authenticated, public;
+
+create or replace function public._call_send_push()
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_url    text := (select value from public.app_settings where key = 'send_push_url');
+  v_secret text := (select value from public.app_settings where key = 'send_push_secret');
+begin
+  if v_url is null or v_url = '' then
+    return; -- 아직 설정 전: 알림함에만 쌓인다
+  end if;
+  perform net.http_post(
+    url     := v_url,
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-push-secret', coalesce(v_secret, '')),
+    body    := '{}'::jsonb
+  );
+exception when others then
+  -- 호출 실패가 예약·취소 자체를 막으면 안 된다
+  raise warning 'send-push 호출 실패: %', sqlerrm;
+end;
+$$;
+
+create or replace function public.trg_notifications_push()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+begin
+  perform public._call_send_push();
+  return null;
+end;
+$$;
+
+drop trigger if exists notifications_push on public.notifications;
+create trigger notifications_push
+  after insert on public.notifications
+  for each statement execute function public.trg_notifications_push();
+
+revoke execute on function public._call_send_push() from public, anon, authenticated;
+revoke execute on function public.trg_notifications_push() from public, anon, authenticated;
+
+
+-- -----------------------------------------------------------------------------
 -- 11. 이미 가입된 계정의 프로필 채우기 (v1 → v2 로 다시 설치한 경우)
 -- -----------------------------------------------------------------------------
 insert into public.users (id, email, name, phone)

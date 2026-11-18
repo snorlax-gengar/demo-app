@@ -17,6 +17,10 @@ await db.exec(`
   grant usage on schema auth, public to anon, authenticated;
   grant execute on function auth.uid() to anon, authenticated;
 `);
+// pg_net 대역: http_post 호출을 기록만 한다
+await db.exec(`create schema net; create table net._calls (id serial, url text, headers jsonb, at timestamptz default now());
+  create function net.http_post(url text, headers jsonb default '{}', body jsonb default '{}') returns bigint language sql as
+  $$ insert into net._calls(url, headers) values (url, headers) returning id::bigint $$;`);
 await db.exec(fs.readFileSync(schemaPath, 'utf8'));
 if (patchPath) await db.exec(fs.readFileSync(patchPath, 'utf8'));
 
@@ -465,6 +469,26 @@ await tc('TC-D46', '알림', '알림은 본인 것만 보이고 읽음 처리되
   await rpc(m2, `select unregister_push_token($1)`, [tok]);
   assert.equal((await q(`select count(*)::int c from push_tokens where token=$1`, [tok]))[0].c, 0);
   return `본인 알림 ${mine}건 조회·${read}건 읽음, 원장이 남의 알림 조회 0건, 토큰 주인 변경·해제 확인`;
+});
+
+// 13) 푸시 자동 호출 (패치 011)
+await tc('TC-D47', '알림', '알림이 쌓이면 send-push 함수를 호출하고, 주소 설정 전에는 호출하지 않는다 (여러 번 불려도 발송은 1번 — TC-P01)', '주소 없음 → 호출 0 / 주소 설정 후 폐강(3명 알림) → 알림마다 호출(3번), 비밀값 헤더 포함, 회원은 설정 조회 불가', async () => {
+  await q(`delete from net._calls`); await q(`delete from app_settings`);
+  const c1 = await mkClass(P.t1, 40 * 24 * 60, 4, '호출 전');
+  await book(P.owner, c1.id, m1);
+  const before = (await q(`select count(*)::int c from net._calls`))[0].c;
+  await q(`insert into app_settings values ('send_push_url','https://ref.supabase.co/functions/v1/send-push'), ('send_push_secret','s3cret')`);
+  const c2 = await mkClass(P.t2, 41 * 24 * 60, 4, '호출 후');
+  await book(m1, c2.id); await book(m2, c2.id); await book(m3, c2.id);
+  await q(`delete from net._calls`);
+  await rpc(P.owner, `select cancel_class($1)`, [c2.id]);
+  const calls = await q(`select url, headers from net._calls`);
+  const notes3 = (await q(`select count(*)::int c from notifications where kind='class_cancelled' and body like '%호출 후%'`))[0].c;
+  assert.equal(before, 0); assert.equal(notes3, 3);
+  assert.equal(calls.length, 3);
+  assert.equal(calls[0].url, 'https://ref.supabase.co/functions/v1/send-push'); assert.equal(calls[0].headers['x-push-secret'], 's3cret');
+  await rejects(rpc(m1, `select * from app_settings`), /permission denied/);
+  return `설정 전 호출 ${before}번 / 폐강 알림 ${notes3}건 → 호출 ${calls.length}번, 헤더 x-push-secret 포함, 회원은 설정 조회 불가`;
 });
 
 // 8) 스튜디오 격리

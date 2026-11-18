@@ -1,6 +1,7 @@
 // Supabase Edge Function: send-push
 // 알림(notifications) 중 아직 휴대폰으로 안 보낸 것을 Expo Push 로 보낸다.
-// 호출: Database Webhook(notifications INSERT) 또는 pg_cron/수동 호출. 여러 번 불려도 같은 알림은 한 번만 간다.
+// 호출: DB 트리거(notifications INSERT → pg_net, 패치 011) + 5분마다 pg_cron. 여러 번 불려도 같은 알림은 한 번만 간다.
+// 배포: npx supabase functions deploy send-push --project-ref <ref> --use-api --no-verify-jwt
 // 필요한 비밀값: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY(기본 제공), EXPO_ACCESS_TOKEN(선택: Expo 푸시 보안 설정 시)
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -44,7 +45,12 @@ const store: PushStore = {
   },
 };
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // 선택: 비밀값을 정했다면(app_settings.send_push_secret = 함수 비밀 PUSH_SECRET) 다른 호출은 거절
+  const secret = Deno.env.get('PUSH_SECRET');
+  if (secret && req.headers.get('x-push-secret') !== secret) {
+    return Response.json({ error: 'unauthorized' }, { status: 401 });
+  }
   try {
     const result = await sendPending(store, fetch, { accessToken: Deno.env.get('EXPO_ACCESS_TOKEN') ?? undefined });
     return Response.json(result);
