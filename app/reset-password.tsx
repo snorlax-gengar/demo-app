@@ -45,7 +45,7 @@ export default function ResetPasswordScreen() {
     <View className="flex-1 bg-canvas px-6" style={{ paddingTop: insets.top + 32 }}>
       <Text className="text-3xl font-bold text-ink">새 비밀번호</Text>
       {!params ? (
-        <ActivityIndicator className="mt-10" color="#24766A" />
+        <ActivityIndicator className="mt-10" color="#0B7A4D" />
       ) : linkError ? (
         <>
           <Text className="mt-3 text-base leading-6 text-stone-600">

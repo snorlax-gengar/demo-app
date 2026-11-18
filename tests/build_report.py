@@ -116,6 +116,7 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 
 <h2>1. 이번 변경 사항</h2>
 <table><tr><th>구분</th><th>내용</th><th>관련 테스트</th></tr>
+<tr><td>디자인</td><td><b>PIQ 마크·브랜드 색</b>: 받은 마크를 벡터로 정리해 앱 아이콘·안드로이드 적응형·스플래시·로그인 로고·공개 페이지에 적용. 앱 색을 마크 기준으로 — 흰 바탕, 글자 진회색 #2F3842, 메인 초록 #0B7A4D(버튼·수강권 카드), 마크 민트 #53FAA6 는 진행 막대 등 포인트만, 카드는 연한 회색 #F4F7F5. 글자 대비 자동 점검 추가</td><td class="id">TC-R03, TC-R11, 화면 전체</td></tr>
 <tr><td>신규 기능</td><td><b>간편 로그인 (카카오·애플·구글)</b>: 로그인 화면 버튼(애플은 iPhone 개발 빌드·배포 앱에서만 기본 애플 버튼). 카카오·구글은 앱 안 브라우저로 로그인 후 앱으로 복귀, 애플은 기기 로그인 창 → 토큰으로 로그인. 처음 들어온 사람과 약관 이전 가입자는 <b>이름 확인 + 약관 동의</b> 화면을 거치고 동의 시각을 계정 정보에 기록. 각 회사 앱 등록·Supabase 키 입력은 <code>docs/social-login-setup.md</code></td><td class="id">TC-U32·U33, TC-R10</td></tr>
 <tr><td>운영 설정</td><td><b>Supabase 대시보드 점검·적용(2026-11-18)</b>: Redirect URLs 에 <code>piq://**</code>·<code>exp://**</code> 추가, 탈퇴 함수 Verify JWT 끔. 확인 결과 커스텀 SMTP 없음(기본 메일은 팀원에게만·시간당 2통), 요금제 FREE, Confirm email 꺼짐(SMTP 연결 후 켜야 함), 리전 싱가포르 → 처리방침에 국외 이전 항목 추가. EAS 환경 변수 0개 확인</td><td class="id">—</td></tr>
 <tr><td>출시 준비</td><td><b>보안 점검</b>: Supabase 기본 권한(새 표·함수 전부 공개)을 재현한 상태에서 RLS·비로그인 차단·직접 쓰기 권한·권한 상승 함수 설정·내부 함수 차단을 자동 점검 (<code>tests/db/audit.mjs</code>). 점검 중 탈퇴 트리거 함수의 실행 권한을 막는 보완 1건(F-06)</td><td class="id">TC-S01~S07</td></tr>

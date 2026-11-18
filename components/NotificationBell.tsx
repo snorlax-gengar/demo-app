@@ -13,8 +13,8 @@ export function NotificationBell() {
       onPress={() => router.push('/notifications')}
       accessibilityRole="button"
       accessibilityLabel={unread ? `알림 ${unread}개 새로 옴` : '알림'}
-      className="h-11 w-11 items-center justify-center rounded-full bg-white active:opacity-70">
-      <Ionicons name="notifications-outline" size={22} color="#1B1F1E" />
+      className="h-11 w-11 items-center justify-center rounded-full bg-surface active:opacity-70">
+      <Ionicons name="notifications-outline" size={22} color="#2F3842" />
       {unread ? (
         <View className="absolute right-1.5 top-1.5 min-w-[18px] items-center rounded-full bg-rose-500 px-1">
           <Text className="text-[11px] font-bold leading-[18px] text-white">{unread > 9 ? '9+' : unread}</Text>

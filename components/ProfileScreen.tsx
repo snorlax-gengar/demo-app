@@ -78,7 +78,7 @@ export function ProfileScreen() {
         <Text className="text-2xl font-bold text-ink">내 정보</Text>
 
         {/* 프로필 */}
-        <View className="mt-5 flex-row items-center rounded-3xl bg-white p-5">
+        <View className="mt-5 flex-row items-center rounded-3xl bg-surface p-5">
           <View className="h-14 w-14 items-center justify-center rounded-full bg-brand-100">
             <Text className="text-xl font-bold text-brand-700">{profile.name.slice(0, 1) || '?'}</Text>
           </View>
@@ -95,9 +95,9 @@ export function ProfileScreen() {
           onPress={() => router.push('/notifications')}
           accessibilityRole="button"
           accessibilityLabel="알림함"
-          className="mt-4 flex-row items-center rounded-3xl bg-white p-5 active:opacity-70">
+          className="mt-4 flex-row items-center rounded-3xl bg-surface p-5 active:opacity-70">
           <View className="h-11 w-11 items-center justify-center rounded-full bg-brand-50">
-            <Ionicons name="notifications-outline" size={20} color="#24766A" />
+            <Ionicons name="notifications-outline" size={20} color="#0B7A4D" />
           </View>
           <View className="ml-4 flex-1">
             <Text className="text-base font-bold text-ink">알림</Text>
@@ -117,9 +117,9 @@ export function ProfileScreen() {
             onPress={() => router.push('/(admin)/revenue')}
             accessibilityRole="button"
             accessibilityLabel="매출 보기"
-            className="mt-4 flex-row items-center rounded-3xl bg-white p-5 active:opacity-70">
+            className="mt-4 flex-row items-center rounded-3xl bg-surface p-5 active:opacity-70">
             <View className="h-11 w-11 items-center justify-center rounded-full bg-brand-50">
-              <Ionicons name="stats-chart" size={20} color="#24766A" />
+              <Ionicons name="stats-chart" size={20} color="#0B7A4D" />
             </View>
             <View className="ml-4 flex-1">
               <Text className="text-sm text-stone-500">이번 달 매출 · 원장만 보임</Text>
@@ -137,9 +137,9 @@ export function ProfileScreen() {
             onPress={() => router.push('/(admin)/products')}
             accessibilityRole="button"
             accessibilityLabel="수강권 상품 관리"
-            className="mt-4 flex-row items-center rounded-3xl bg-white p-5 active:opacity-70">
+            className="mt-4 flex-row items-center rounded-3xl bg-surface p-5 active:opacity-70">
             <View className="h-11 w-11 items-center justify-center rounded-full bg-brand-50">
-              <Ionicons name="pricetags-outline" size={20} color="#24766A" />
+              <Ionicons name="pricetags-outline" size={20} color="#0B7A4D" />
             </View>
             <View className="ml-4 flex-1">
               <Text className="text-base font-bold text-ink">수강권 상품 관리</Text>
@@ -162,8 +162,8 @@ export function ProfileScreen() {
             <View className="mt-4 flex-row gap-2">
               <Pressable
                 onPress={() => void shareCode()}
-                className="flex-1 flex-row items-center justify-center rounded-2xl bg-white py-3 active:opacity-80">
-                <Ionicons name="share-outline" size={16} color="#1C5D54" />
+                className="flex-1 flex-row items-center justify-center rounded-2xl bg-surface py-3 active:opacity-80">
+                <Ionicons name="share-outline" size={16} color="#0B6E46" />
                 <Text className="ml-1.5 text-sm font-bold text-brand-700">공유하기</Text>
               </Pressable>
               <Pressable
@@ -182,9 +182,9 @@ export function ProfileScreen() {
 
         {/* 내 스튜디오 */}
         <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">내 스튜디오</Text>
-        <View className="rounded-3xl bg-white px-5">
+        <View className="rounded-3xl bg-surface px-5">
           <View className="flex-row items-center py-4">
-            <Ionicons name="checkmark-circle" size={20} color="#24766A" />
+            <Ionicons name="checkmark-circle" size={20} color="#0B7A4D" />
             <Text className="ml-3 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
               {studio.name}
             </Text>
@@ -207,14 +207,14 @@ export function ProfileScreen() {
           <Pressable
             onPress={() => router.push('/add-studio')}
             className="flex-row items-center border-t border-stone-100 py-4 active:opacity-60">
-            <Ionicons name="add" size={20} color="#24766A" />
+            <Ionicons name="add" size={20} color="#0B7A4D" />
             <Text className="ml-3 text-base font-semibold text-brand-700">다른 스튜디오 참여 · 만들기</Text>
           </Pressable>
         </View>
 
         {/* 계정 */}
         <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">계정</Text>
-        <View className="rounded-3xl bg-white px-5">
+        <View className="rounded-3xl bg-surface px-5">
           {rows.map((row, index) => (
             <View key={row.label} className={`flex-row items-center py-4 ${index > 0 ? 'border-t border-stone-100' : ''}`}>
               <Ionicons name={row.icon} size={18} color="#78716C" />

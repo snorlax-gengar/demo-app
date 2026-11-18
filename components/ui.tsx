@@ -3,7 +3,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import { ActivityIndicator, Pressable, Text, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export const BRAND = '#24766A';
+export const BRAND = '#0B7A4D';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 

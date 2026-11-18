@@ -43,7 +43,7 @@ export function StaffClassCard({ cls, showInstructor, onMark, onOpenMember, onOp
       : null;
 
   return (
-    <View className={`rounded-2xl bg-white p-4 ${inProgress ? 'border border-brand-400' : 'border border-transparent'}`}>
+    <View className={`rounded-2xl bg-surface p-4 ${inProgress ? 'border border-brand-400' : 'border border-transparent'}`}>
       <Pressable
         disabled={!onOpenClass}
         onPress={() => onOpenClass?.(cls.id)}

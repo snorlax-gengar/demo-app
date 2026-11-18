@@ -36,7 +36,7 @@ export default function AuthCallback() {
   }, [router]);
   return (
     <View className="flex-1 items-center justify-center bg-canvas">
-      <ActivityIndicator color="#24766A" />
+      <ActivityIndicator color="#0B7A4D" />
     </View>
   );
 }

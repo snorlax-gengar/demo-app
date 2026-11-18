@@ -43,7 +43,7 @@
       [
         "expo-notifications",
         {
-          "color": "#24766A"
+          "color": "#0B7A4D"
         }
       ],
       "expo-apple-authentication",

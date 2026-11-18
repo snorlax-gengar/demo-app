@@ -41,7 +41,7 @@ export function Chip({ label, active, onPress, large }: { label: string; active:
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected: active }}
-      className={`rounded-full ${large ? 'px-4 py-2.5' : 'px-3 py-1.5'} ${active ? 'bg-ink' : 'bg-white'}`}>
+      className={`rounded-full ${large ? 'px-4 py-2.5' : 'px-3 py-1.5'} ${active ? 'bg-ink' : 'bg-surface'}`}>
       <Text className={`text-sm font-semibold ${active ? 'text-white' : 'text-stone-600'}`}>{label}</Text>
     </Pressable>
   );

@@ -79,7 +79,7 @@ export function StudioSetup({ mode, onClose, onDone }: Props) {
             onPress={onClose}
             accessibilityLabel="닫기"
             className="-ml-2 h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-            <Ionicons name="close" size={24} color="#1B1F1E" />
+            <Ionicons name="close" size={24} color="#2F3842" />
           </Pressable>
         ) : null}
 
@@ -93,9 +93,9 @@ export function StudioSetup({ mode, onClose, onDone }: Props) {
         </Text>
 
         {/* ── 초대 코드로 참여 ── */}
-        <View className="mt-8 rounded-3xl bg-white p-5">
+        <View className="mt-8 rounded-3xl bg-surface p-5">
           <View className="flex-row items-center">
-            <Ionicons name="enter-outline" size={20} color="#24766A" />
+            <Ionicons name="enter-outline" size={20} color="#0B7A4D" />
             <Text className="ml-2 text-lg font-bold text-ink">초대 코드로 참여</Text>
           </View>
           <Text className="mt-1 text-sm text-stone-500">회원·강사 모두 코드로 들어옵니다. 강사는 원장이 역할을 바꿔 줍니다.</Text>
@@ -130,9 +130,9 @@ export function StudioSetup({ mode, onClose, onDone }: Props) {
         </View>
 
         {/* ── 새로 만들기 ── */}
-        <View className="rounded-3xl bg-white p-5">
+        <View className="rounded-3xl bg-surface p-5">
           <View className="flex-row items-center">
-            <Ionicons name="add-circle-outline" size={20} color="#24766A" />
+            <Ionicons name="add-circle-outline" size={20} color="#0B7A4D" />
             <Text className="ml-2 text-lg font-bold text-ink">새 스튜디오 만들기</Text>
           </View>
           <Text className="mt-1 text-sm text-stone-500">
@@ -155,7 +155,7 @@ export function StudioSetup({ mode, onClose, onDone }: Props) {
               canCreate ? 'border-brand-600' : 'border-brand-200'
             }`}>
             {createStudio.isPending ? (
-              <ActivityIndicator color="#24766A" />
+              <ActivityIndicator color="#0B7A4D" />
             ) : (
               <Text className={`text-base font-bold ${canCreate ? 'text-brand-700' : 'text-brand-200'}`}>만들기</Text>
             )}

@@ -31,8 +31,8 @@ export function PassCard({ pass, width }: Props) {
   const tone = !usable
     ? { card: 'bg-stone-200', title: 'text-stone-500', sub: 'text-stone-400', track: 'bg-stone-300', bar: 'bg-stone-400', chip: 'bg-stone-300', chipText: 'text-stone-600' }
     : isPrivate
-      ? { card: 'bg-brand-700', title: 'text-white', sub: 'text-brand-100', track: 'bg-brand-600', bar: 'bg-white', chip: 'bg-brand-600', chipText: 'text-white' }
-      : { card: 'bg-white', title: 'text-ink', sub: 'text-stone-500', track: 'bg-brand-50', bar: 'bg-brand-500', chip: 'bg-brand-50', chipText: 'text-brand-700' };
+      ? { card: 'bg-brand-700', title: 'text-white', sub: 'text-brand-100', track: 'bg-brand-600', bar: 'bg-brand-400', chip: 'bg-brand-600', chipText: 'text-white' }
+      : { card: 'bg-surface', title: 'text-ink', sub: 'text-stone-500', track: 'bg-brand-50', bar: 'bg-brand-500', chip: 'bg-brand-50', chipText: 'text-brand-700' };
 
   const urgent = usable && dDay <= 7;
 

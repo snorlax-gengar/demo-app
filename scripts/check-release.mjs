@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { createRequire } from 'node:module';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -95,6 +96,24 @@ check('TC-R10', '간편 로그인(카카오·애플·구글) 앱 설정', 'iOS �
   const plugins = app.plugins.map((p) => (Array.isArray(p) ? p[0] : p));
   const ok = app.ios?.usesAppleSignIn === true && plugins.includes('expo-apple-authentication') && plugins.includes('expo-web-browser') && app.scheme === 'piq';
   return [ok ? 'warn' : 'fail', ok ? '앱 설정 완료 · Supabase 에 카카오·애플·구글 키 입력은 아직 (docs/social-login-setup.md)' : '앱 설정 누락'];
+});
+
+check('TC-R11', '앱 색(PIQ 마크 기준)의 글자 대비가 읽기 기준(WCAG AA 4.5:1)을 넘는다', '버튼 흰 글씨·본문·링크·카드 위 글씨 모두 4.5 이상, 마크 민트는 글자 배경으로 안 씀', () => {
+  const require = createRequire(import.meta.url);
+  const c = require(path.join(root, 'tailwind.config.js')).theme.extend.colors;
+  const lum = (h) => { const v = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4)); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  const pairs = [
+    ['버튼(흰 글씨/brand-600)', '#FFFFFF', c.brand[600]],
+    ['수강권 카드(흰 글씨/brand-700)', '#FFFFFF', c.brand[700]],
+    ['본문(ink/바탕)', c.ink, c.canvas],
+    ['카드 글씨(ink/surface)', c.ink, c.surface],
+    ['링크(brand-700/바탕)', c.brand[700], c.canvas],
+    ['강조 글씨(brand-600/surface)', c.brand[600], c.surface],
+    ['민트 위 글씨(ink/brand-400)', c.ink, c.brand[400]],
+  ].map(([n, f, b]) => [n, ratio(f, b)]);
+  const low = pairs.filter(([, r]) => r < 4.5);
+  return [low.length ? 'fail' : 'ok', pairs.map(([n, r]) => `${n} ${r.toFixed(1)}`).join(', ')];
 });
 
 const out = process.argv[2];

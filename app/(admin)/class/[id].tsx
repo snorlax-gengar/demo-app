@@ -114,7 +114,7 @@ export default function ClassDetailScreen() {
             onPress={() => router.push({ pathname: '/(admin)/book/[classId]', params: { classId: cls.id } })}
             accessibilityRole="button"
             className="mt-3 flex-row items-center justify-center rounded-2xl border border-brand-200 bg-brand-50 py-3.5 active:opacity-70">
-            <Ionicons name="person-add-outline" size={18} color="#24766A" />
+            <Ionicons name="person-add-outline" size={18} color="#0B7A4D" />
             <Text className="ml-2 text-base font-semibold text-brand-700">회원 대신 예약</Text>
           </Pressable>
         ) : null}
@@ -122,7 +122,7 @@ export default function ClassDetailScreen() {
         {editable ? (
           <View className="mt-6">
             <Text className="mb-2 text-sm font-semibold text-stone-600">수업 관리</Text>
-            <View className="rounded-2xl bg-white px-4">
+            <View className="rounded-2xl bg-surface px-4">
               {cls.class_type === 'group' ? (
                 <View className="py-3.5">
                   <View className="flex-row items-center justify-between">
@@ -177,7 +177,7 @@ export default function ClassDetailScreen() {
           onPress={goBack}
           accessibilityLabel="뒤로"
           className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-          <Ionicons name="chevron-back" size={24} color="#1B1F1E" />
+          <Ionicons name="chevron-back" size={24} color="#2F3842" />
         </Pressable>
         <Text className="ml-1 flex-1 text-lg font-bold text-ink" numberOfLines={1}>
           {cls?.title ?? '수업 상세'}

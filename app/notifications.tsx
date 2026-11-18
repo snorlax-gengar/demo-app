@@ -10,12 +10,12 @@ import { dayjs } from '@/lib/date';
 import { PUSH_STATUS_TEXT, usePushStore } from '@/lib/push';
 
 const KIND_ICON: Record<string, { name: keyof typeof Ionicons.glyphMap; color: string }> = {
-  booked_by_staff: { name: 'checkmark-circle', color: '#24766A' },
-  promoted: { name: 'arrow-up-circle', color: '#24766A' },
+  booked_by_staff: { name: 'checkmark-circle', color: '#0B7A4D' },
+  promoted: { name: 'arrow-up-circle', color: '#0B7A4D' },
   waitlisted_by_staff: { name: 'time', color: '#B45309' },
   cancelled_by_staff: { name: 'close-circle', color: '#78716C' },
   class_cancelled: { name: 'alert-circle', color: '#E11D48' },
-  reminder: { name: 'notifications', color: '#2F8F7A' },
+  reminder: { name: 'notifications', color: '#16A866' },
 };
 
 /** 알림함: 예약 확정·대기 승격·취소·폐강·전날 알림. 열면 모두 읽음 처리 */
@@ -42,7 +42,7 @@ export default function NotificationsScreen() {
     <Screen>
       <View className="flex-row items-center px-3 py-2">
         <Pressable onPress={goBack} accessibilityLabel="뒤로" className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-          <Ionicons name="chevron-back" size={24} color="#1B1F1E" />
+          <Ionicons name="chevron-back" size={24} color="#2F3842" />
         </Pressable>
         <Text className="ml-1 flex-1 text-lg font-bold text-ink">알림</Text>
       </View>
@@ -63,7 +63,7 @@ export default function NotificationsScreen() {
           {(query.data ?? []).length === 0 ? (
             <EmptyView icon="notifications-outline" title="아직 알림이 없습니다" description="대신 예약·대기 확정·취소·폐강·수업 전날 알림이 여기에 쌓입니다." />
           ) : (
-            <View className="rounded-2xl bg-white px-4">
+            <View className="rounded-2xl bg-surface px-4">
               {(query.data ?? []).map((n, i) => (
                 <Row key={n.id} n={n} first={i === 0} />
               ))}

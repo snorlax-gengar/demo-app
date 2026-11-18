@@ -52,7 +52,7 @@ export default function StaffBookScreen() {
         onPress={goBack}
         accessibilityLabel="뒤로"
         className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-        <Ionicons name="chevron-back" size={24} color="#1B1F1E" />
+        <Ionicons name="chevron-back" size={24} color="#2F3842" />
       </Pressable>
       <Text className="ml-1 flex-1 text-lg font-bold text-ink">회원 대신 예약</Text>
     </View>
@@ -122,7 +122,7 @@ export default function StaffBookScreen() {
   return (
     <Screen>
       {header}
-      <View className="mx-5 rounded-2xl bg-white p-4">
+      <View className="mx-5 rounded-2xl bg-surface p-4">
         <Text className="text-sm font-semibold text-brand-600">{formatDay(cls.starts_at)}</Text>
         <Text className="mt-0.5 text-base font-bold text-ink">
           {formatTimeRange(cls.starts_at, cls.ends_at)} · {cls.title}
@@ -137,7 +137,7 @@ export default function StaffBookScreen() {
         <Text className="mx-5 mt-4 text-center text-sm text-stone-500">시작했거나 폐강된 수업은 예약할 수 없습니다.</Text>
       ) : (
         <>
-          <View className="mx-5 mt-4 flex-row items-center rounded-2xl bg-white px-4">
+          <View className="mx-5 mt-4 flex-row items-center rounded-2xl bg-surface px-4">
             <Ionicons name="search" size={18} color="#A8A29E" />
             <TextInput
               value={search}
@@ -163,12 +163,12 @@ export default function StaffBookScreen() {
                   disabled={disabled}
                   accessibilityRole="button"
                   accessibilityState={{ disabled }}
-                  className={`mb-2 flex-row items-center rounded-2xl bg-white px-4 py-3.5 active:opacity-70 ${disabled ? 'opacity-45' : ''}`}>
+                  className={`mb-2 flex-row items-center rounded-2xl bg-surface px-4 py-3.5 active:opacity-70 ${disabled ? 'opacity-45' : ''}`}>
                   <View className="flex-1">
                     <Text className="text-base font-semibold text-ink">{m.name}</Text>
                     <Text className={`mt-0.5 text-sm ${m.remaining === 0 && !m.already ? 'text-rose-500' : 'text-stone-500'}`}>{note}</Text>
                   </View>
-                  {!disabled ? <Ionicons name="add-circle" size={26} color="#24766A" /> : null}
+                  {!disabled ? <Ionicons name="add-circle" size={26} color="#0B7A4D" /> : null}
                 </Pressable>
               );
             }}

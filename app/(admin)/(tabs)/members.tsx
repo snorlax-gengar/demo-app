@@ -78,7 +78,7 @@ export default function MembersScreen() {
     <Screen>
       <View className="px-5 pt-4">
         <Text className="text-2xl font-bold text-ink">회원</Text>
-        <View className="mt-4 flex-row items-center rounded-2xl bg-white px-4">
+        <View className="mt-4 flex-row items-center rounded-2xl bg-surface px-4">
           <Ionicons name="search" size={18} color="#A8A29E" />
           <TextInput
             value={keyword}
@@ -104,7 +104,7 @@ export default function MembersScreen() {
                 onPress={() => setFilter(f.key)}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
-                className={`flex-row items-center rounded-full px-3.5 py-2 ${active ? 'bg-ink' : 'bg-white'}`}>
+                className={`flex-row items-center rounded-full px-3.5 py-2 ${active ? 'bg-ink' : 'bg-surface'}`}>
                 <Text className={`text-sm font-semibold ${active ? 'text-white' : 'text-stone-600'}`}>{f.label}</Text>
                 <Text
                   className={`ml-1.5 text-sm font-bold ${active ? 'text-brand-200' : alert ? 'text-amber-600' : 'text-stone-400'}`}>
@@ -155,7 +155,7 @@ export default function MembersScreen() {
 function MemberRow({ row, onPress }: { row: Row; onPress: () => void }) {
   const { member, summary } = row;
   return (
-    <Pressable onPress={onPress} className="flex-row items-center rounded-2xl bg-white px-4 py-3.5 active:opacity-70">
+    <Pressable onPress={onPress} className="flex-row items-center rounded-2xl bg-surface px-4 py-3.5 active:opacity-70">
       <View className="h-11 w-11 items-center justify-center rounded-full bg-brand-100">
         <Text className="text-base font-bold text-brand-700">{member.name.slice(0, 1) || '?'}</Text>
       </View>

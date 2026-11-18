@@ -40,7 +40,7 @@ export default function WithdrawScreen() {
     <Screen>
       <View className="flex-row items-center px-3 py-2">
         <Pressable onPress={goBack} accessibilityLabel="뒤로" className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-          <Ionicons name="chevron-back" size={24} color="#1B1F1E" />
+          <Ionicons name="chevron-back" size={24} color="#2F3842" />
         </Pressable>
         <Text className="ml-1 flex-1 text-lg font-bold text-ink">회원 탈퇴</Text>
       </View>
@@ -61,8 +61,8 @@ export default function WithdrawScreen() {
           accessibilityRole="checkbox"
           accessibilityState={{ checked: agreed }}
           accessibilityLabel="안내를 모두 확인했어요"
-          className="mt-6 flex-row items-center rounded-2xl bg-white px-4 py-4 active:opacity-70">
-          <Ionicons name={agreed ? 'checkbox' : 'square-outline'} size={22} color={agreed ? '#24766A' : '#A8A29E'} />
+          className="mt-6 flex-row items-center rounded-2xl bg-surface px-4 py-4 active:opacity-70">
+          <Ionicons name={agreed ? 'checkbox' : 'square-outline'} size={22} color={agreed ? '#0B7A4D' : '#A8A29E'} />
           <Text className="ml-3 flex-1 text-base text-ink">안내를 모두 확인했어요</Text>
         </Pressable>
 
@@ -81,7 +81,7 @@ export default function WithdrawScreen() {
 
 function Section({ icon, color, title, items }: { icon: keyof typeof Ionicons.glyphMap; color: string; title: string; items: string[] }) {
   return (
-    <View className="mt-4 rounded-2xl bg-white p-4">
+    <View className="mt-4 rounded-2xl bg-surface p-4">
       <View className="flex-row items-center">
         <Ionicons name={icon} size={18} color={color} />
         <Text className="ml-2 text-base font-bold text-ink">{title}</Text>

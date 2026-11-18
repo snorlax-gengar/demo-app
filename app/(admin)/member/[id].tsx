@@ -88,7 +88,7 @@ export default function MemberDetailScreen() {
           onPress={goBack}
           accessibilityLabel="뒤로"
           className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-          <Ionicons name="chevron-back" size={24} color="#1B1F1E" />
+          <Ionicons name="chevron-back" size={24} color="#2F3842" />
         </Pressable>
         <Text className="ml-1 text-lg font-bold text-ink">회원 상세</Text>
       </View>
@@ -113,7 +113,7 @@ export default function MemberDetailScreen() {
             />
           }>
           {/* ── 프로필 ── */}
-          <View className="mx-5 mt-2 rounded-3xl bg-white p-5">
+          <View className="mx-5 mt-2 rounded-3xl bg-surface p-5">
             <View className="flex-row items-center">
               <View className="h-14 w-14 items-center justify-center rounded-full bg-brand-100">
                 <Text className="text-xl font-bold text-brand-700">{profile.name.slice(0, 1) || '?'}</Text>
@@ -202,7 +202,7 @@ export default function MemberDetailScreen() {
           {upcoming.length === 0 ? (
             <EmptyView icon="calendar-outline" title="예정된 예약이 없습니다" />
           ) : (
-            <View className="mx-5 rounded-2xl bg-white px-4">
+            <View className="mx-5 rounded-2xl bg-surface px-4">
               {upcoming.map((booking, index) => (
                 <BookingRow
                   key={booking.id}
@@ -230,7 +230,7 @@ export default function MemberDetailScreen() {
           {history.length === 0 ? (
             <EmptyView icon="time-outline" title="지난 수업 이력이 없습니다" />
           ) : (
-            <View className="mx-5 rounded-2xl bg-white px-4">
+            <View className="mx-5 rounded-2xl bg-surface px-4">
               {history.map((booking, index) => (
                 <BookingRow key={booking.id} booking={booking} first={index === 0} />
               ))}
@@ -404,7 +404,7 @@ function RoleEditor({ person, studioId, isOwner }: { person: StudioPerson; studi
   };
 
   return (
-    <View className="mx-5 mt-4 rounded-3xl bg-white p-5">
+    <View className="mx-5 mt-4 rounded-3xl bg-surface p-5">
       <View className="flex-row items-center justify-between">
         <Text className="text-base font-bold text-ink">역할</Text>
         {setRole.isPending ? <ActivityIndicator size="small" color={BRAND} /> : null}

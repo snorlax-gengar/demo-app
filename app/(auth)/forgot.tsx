@@ -34,7 +34,7 @@ export default function ForgotPasswordScreen() {
   return (
     <View className="flex-1 bg-canvas px-6" style={{ paddingTop: insets.top + 8 }}>
       <Pressable onPress={() => router.back()} accessibilityLabel="뒤로" className="-ml-2 h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-        <Ionicons name="chevron-back" size={24} color="#1B1F1E" />
+        <Ionicons name="chevron-back" size={24} color="#2F3842" />
       </Pressable>
       <Text className="mt-4 text-3xl font-bold text-ink">비밀번호 찾기</Text>
       {sent ? (

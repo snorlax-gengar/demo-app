@@ -156,7 +156,7 @@ export default function LoginScreen() {
 const SOCIAL_STYLE = {
   kakao: { label: '카카오로 계속하기', box: 'bg-[#FEE500]', text: 'text-[#191919]', spinner: '#191919' },
   apple: { label: 'Apple로 계속하기', box: 'bg-black', text: 'text-white', spinner: '#FFFFFF' },
-  google: { label: 'Google로 계속하기', box: 'border border-stone-300 bg-white', text: 'text-ink', spinner: '#1B1F1E' },
+  google: { label: 'Google로 계속하기', box: 'border border-stone-300 bg-white', text: 'text-ink', spinner: '#2F3842' },
 } as const;
 const GOOGLE_G = require('../../assets/images/social/google-g.png');
 

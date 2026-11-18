@@ -80,7 +80,7 @@ export default function PassProductEditScreen() {
   const header = (
     <View className="flex-row items-center px-3 py-2">
       <Pressable onPress={close} accessibilityLabel="닫기" className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-        <Ionicons name="close" size={24} color="#1B1F1E" />
+        <Ionicons name="close" size={24} color="#2F3842" />
       </Pressable>
       <Text className="ml-1 text-lg font-bold text-ink">{id ? '상품 수정' : '상품 추가'}</Text>
     </View>
@@ -121,7 +121,7 @@ export default function PassProductEditScreen() {
                 <Chip key={n} label={`${n}회`} active={count === n} onPress={() => setCount(n)} large />
               ))}
             </View>
-            <View className="mt-3 flex-row items-center justify-between rounded-2xl bg-white px-4 py-3">
+            <View className="mt-3 flex-row items-center justify-between rounded-2xl bg-surface px-4 py-3">
               <Text className="text-base text-ink">직접 입력</Text>
               <Stepper
                 value={`${count}회`}
@@ -151,7 +151,7 @@ export default function PassProductEditScreen() {
                 <Chip key={v} label={durationLabel(v, unit)} active={duration === v} onPress={() => setDuration(v)} large />
               ))}
             </View>
-            <View className="mt-3 flex-row items-center justify-between rounded-2xl bg-white px-4 py-3">
+            <View className="mt-3 flex-row items-center justify-between rounded-2xl bg-surface px-4 py-3">
               <Text className="text-base text-ink">직접 입력</Text>
               <Stepper
                 value={durationLabel(duration, unit)}
@@ -195,12 +195,12 @@ export default function PassProductEditScreen() {
           </Field>
 
           {id ? (
-            <View className="mt-5 flex-row items-center rounded-2xl bg-white px-4 py-3">
+            <View className="mt-5 flex-row items-center rounded-2xl bg-surface px-4 py-3">
               <View className="flex-1 pr-3">
                 <Text className="text-base text-ink">발급 화면에 보이기</Text>
                 <Text className="mt-0.5 text-xs text-stone-400">끄면 숨김 처리됩니다. 언제든 다시 켤 수 있어요.</Text>
               </View>
-              <Switch value={active} onValueChange={setActive} accessibilityLabel="발급 화면에 보이기" trackColor={{ true: '#24766A' }} />
+              <Switch value={active} onValueChange={setActive} accessibilityLabel="발급 화면에 보이기" trackColor={{ true: '#0B7A4D' }} />
             </View>
           ) : null}
         </ScrollView>

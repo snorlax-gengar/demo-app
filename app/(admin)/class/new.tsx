@@ -109,7 +109,7 @@ export default function NewClassScreen() {
           onPress={close}
           accessibilityLabel="닫기"
           className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-          <Ionicons name="close" size={24} color="#1B1F1E" />
+          <Ionicons name="close" size={24} color="#2F3842" />
         </Pressable>
         <Text className="ml-1 text-lg font-bold text-ink">수업 등록</Text>
       </View>
@@ -128,7 +128,7 @@ export default function NewClassScreen() {
               <Choice label="그룹" sub="만석 시 대기 신청" active={type === 'group'} onPress={() => setType('group')} />
             </View>
             {type === 'group' ? (
-              <View className="mt-3 flex-row items-center justify-between rounded-2xl bg-white px-4 py-3">
+              <View className="mt-3 flex-row items-center justify-between rounded-2xl bg-surface px-4 py-3">
                 <Text className="text-base text-ink">정원</Text>
                 <Stepper
                   value={`${capacity}명`}
@@ -154,7 +154,7 @@ export default function NewClassScreen() {
 
           {/* 날짜·시간 */}
           <Field label="날짜와 시간">
-            <View className="rounded-2xl bg-white px-4">
+            <View className="rounded-2xl bg-surface px-4">
               <Row label="날짜">
                 <Stepper
                   value={formatDay(date)}
@@ -202,7 +202,7 @@ export default function NewClassScreen() {
           <Field label="담당 강사">
             {isAdmin ? (
               instructorsQuery.isLoading ? (
-                <ActivityIndicator color="#24766A" />
+                <ActivityIndicator color="#0B7A4D" />
               ) : (
                 <View className="flex-row flex-wrap gap-2">
                   {(instructorsQuery.data ?? []).map((i) => (
@@ -217,7 +217,7 @@ export default function NewClassScreen() {
                 </View>
               )
             ) : (
-              <View className="rounded-2xl bg-white px-4 py-3.5">
+              <View className="rounded-2xl bg-surface px-4 py-3.5">
                 <Text className="text-base text-ink">{profile?.name} (나)</Text>
               </View>
             )}

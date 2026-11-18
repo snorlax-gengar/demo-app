@@ -12,7 +12,7 @@ import { PAYMENT_METHOD_LABEL, formatWon } from '@/lib/labels';
 import { shortWon, summarizeRevenue } from '@/lib/revenue';
 
 const TYPE_LABEL = { group: '그룹', private: '1:1 개인' } as const;
-const METHOD_COLOR = { card: '#24766A', transfer: '#4FA592', cash: '#B0D5CA', other: '#D6D3CC' } as const;
+const METHOD_COLOR = { card: '#0B7A4D', transfer: '#53FAA6', cash: '#A7F3D0', other: '#D6D3CC' } as const;
 
 /** 원장 전용 매출: 월별 결제 합계·지난달 대비·결제 수단/수강권 유형별·일별 추이·결제 목록 */
 export default function RevenueScreen() {
@@ -33,7 +33,7 @@ export default function RevenueScreen() {
   const header = (
     <View className="flex-row items-center px-3 py-2">
       <Pressable onPress={goBack} accessibilityLabel="뒤로" className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-        <Ionicons name="chevron-back" size={24} color="#1B1F1E" />
+        <Ionicons name="chevron-back" size={24} color="#2F3842" />
       </Pressable>
       <Text className="ml-1 flex-1 text-lg font-bold text-ink" numberOfLines={1}>
         매출 · {studio?.name}
@@ -111,7 +111,7 @@ export default function RevenueScreen() {
           <>
             {/* 일별 추이 */}
             <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">일별 결제</Text>
-            <View className="rounded-2xl bg-white px-4 pb-3 pt-4">
+            <View className="rounded-2xl bg-surface px-4 pb-3 pt-4">
               <Text className="mb-1 text-[11px] text-stone-400">최고 {shortWon(maxDay)}원</Text>
               <View accessibilityLabel="일별 결제 막대 그래프" className="h-24 flex-row items-end">
                 {summary.byDay.map((d) => (
@@ -134,7 +134,7 @@ export default function RevenueScreen() {
 
             {/* 결제 수단 · 수강권 유형 */}
             <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">결제 수단</Text>
-            <View className="rounded-2xl bg-white p-4">
+            <View className="rounded-2xl bg-surface p-4">
               <View className="h-3 flex-row overflow-hidden rounded-full bg-stone-100">
                 {summary.byMethod.map((m) => (
                   <View key={m.method} style={{ flex: m.amount || 0.0001, backgroundColor: METHOD_COLOR[m.method] }} />
@@ -153,7 +153,7 @@ export default function RevenueScreen() {
             </View>
 
             <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">수강권 유형</Text>
-            <View className="rounded-2xl bg-white px-4">
+            <View className="rounded-2xl bg-surface px-4">
               {summary.byType.map((t, i) => (
                 <View key={t.type} className={`flex-row items-center py-3.5 ${i ? 'border-t border-stone-100' : ''}`}>
                   <Text className="flex-1 text-sm text-ink">
@@ -166,7 +166,7 @@ export default function RevenueScreen() {
 
             {/* 결제 목록 */}
             <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">결제 내역 {rows.length}건</Text>
-            <View className="rounded-2xl bg-white px-4">
+            <View className="rounded-2xl bg-surface px-4">
               {rows.map((r, i) => (
                 <Pressable
                   key={r.id}
@@ -199,16 +199,16 @@ export default function RevenueScreen() {
         <Pressable
           onPress={() => setMonth((m) => m.subtract(1, 'month'))}
           accessibilityLabel="이전 달"
-          className="h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-70">
-          <Ionicons name="chevron-back" size={20} color="#1B1F1E" />
+          className="h-10 w-10 items-center justify-center rounded-full bg-surface active:opacity-70">
+          <Ionicons name="chevron-back" size={20} color="#2F3842" />
         </Pressable>
         <Text className="text-base font-bold text-ink">{month.format('YYYY년 M월')}</Text>
         <Pressable
           onPress={() => setMonth((m) => m.add(1, 'month'))}
           disabled={isCurrentMonth}
           accessibilityLabel="다음 달"
-          className={`h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-70 ${isCurrentMonth ? 'opacity-30' : ''}`}>
-          <Ionicons name="chevron-forward" size={20} color="#1B1F1E" />
+          className={`h-10 w-10 items-center justify-center rounded-full bg-surface active:opacity-70 ${isCurrentMonth ? 'opacity-30' : ''}`}>
+          <Ionicons name="chevron-forward" size={20} color="#2F3842" />
         </Pressable>
       </View>
       {body()}

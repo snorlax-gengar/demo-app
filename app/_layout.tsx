@@ -142,7 +142,7 @@ function BootScreen({ error }: { error: string | null }) {
           </Pressable>
         </>
       ) : (
-        <ActivityIndicator color="#24766A" />
+        <ActivityIndicator color="#0B7A4D" />
       )}
     </View>
   );

@@ -126,7 +126,7 @@ export default function IssuePassScreen() {
     <Screen>
       <View className="flex-row items-center px-3 py-2">
         <Pressable onPress={close} accessibilityLabel="닫기" className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-          <Ionicons name="close" size={24} color="#1B1F1E" />
+          <Ionicons name="close" size={24} color="#2F3842" />
         </Pressable>
         <Text className="ml-1 text-lg font-bold text-ink">수강권 발급</Text>
       </View>
@@ -138,8 +138,8 @@ export default function IssuePassScreen() {
       ) : (
         <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}>
-            <View className="mt-1 flex-row items-center rounded-2xl bg-white px-4 py-3">
-              <Ionicons name="person-circle-outline" size={22} color="#24766A" />
+            <View className="mt-1 flex-row items-center rounded-2xl bg-surface px-4 py-3">
+              <Ionicons name="person-circle-outline" size={22} color="#0B7A4D" />
               <Text className="ml-2 text-base font-semibold text-ink">{member.name || '이름 없음'}</Text>
               <Text className="ml-2 text-sm text-stone-500">{member.phone ?? ''}</Text>
             </View>
@@ -191,7 +191,7 @@ export default function IssuePassScreen() {
                   <Chip key={n} label={`${n}회`} active={count === n} onPress={() => setCount(n)} large />
                 ))}
               </View>
-              <View className="mt-3 flex-row items-center justify-between rounded-2xl bg-white px-4 py-3">
+              <View className="mt-3 flex-row items-center justify-between rounded-2xl bg-surface px-4 py-3">
                 <Text className="text-base text-ink">직접 입력</Text>
                 <Stepper
                   value={`${count}회`}
@@ -230,7 +230,7 @@ export default function IssuePassScreen() {
                   <Chip key={v} label={durationLabel(v, unit)} active={duration === v} onPress={() => setDuration(v)} large />
                 ))}
               </View>
-              <View className="mt-3 rounded-2xl bg-white px-4">
+              <View className="mt-3 rounded-2xl bg-surface px-4">
                 <Row label="기간">
                   <Stepper
                     value={durationLabel(duration, unit)}

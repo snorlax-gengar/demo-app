@@ -84,13 +84,13 @@ export default function StaffTimelineScreen() {
             <Pressable
               onPress={() => setDay(day.subtract(1, 'day'))}
               accessibilityLabel="이전 날"
-              className="h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-70">
+              className="h-10 w-10 items-center justify-center rounded-full bg-surface active:opacity-70">
               <Ionicons name="chevron-back" size={20} color="#44403C" />
             </Pressable>
             <Pressable
               onPress={() => setDay(day.add(1, 'day'))}
               accessibilityLabel="다음 날"
-              className="h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-70">
+              className="h-10 w-10 items-center justify-center rounded-full bg-surface active:opacity-70">
               <Ionicons name="chevron-forward" size={20} color="#44403C" />
             </Pressable>
           </View>
@@ -99,7 +99,7 @@ export default function StaffTimelineScreen() {
 
         {/* ── 원장 전용: 전체 강사 보기 토글 ── */}
         {isAdmin ? (
-          <View className="mx-5 mt-4 flex-row items-center justify-between rounded-2xl bg-white px-4 py-3">
+          <View className="mx-5 mt-4 flex-row items-center justify-between rounded-2xl bg-surface px-4 py-3">
             <View className="flex-1 pr-3">
               <Text className="text-base font-semibold text-ink">전체 강사 보기</Text>
               <Text className="mt-0.5 text-xs text-stone-500">
@@ -109,7 +109,7 @@ export default function StaffTimelineScreen() {
             <Switch
               value={showAll}
               onValueChange={setShowAll}
-              trackColor={{ true: '#4FA592', false: '#D6D3D1' }}
+              trackColor={{ true: '#53FAA6', false: '#D6D3D1' }}
               thumbColor="#FFFFFF"
             />
           </View>

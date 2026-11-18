@@ -88,7 +88,7 @@ export default function PassDetailScreen() {
     <Screen>
       <View className="flex-row items-center px-3 py-2">
         <Pressable onPress={goBack} accessibilityLabel="뒤로" className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-          <Ionicons name="chevron-back" size={24} color="#1B1F1E" />
+          <Ionicons name="chevron-back" size={24} color="#2F3842" />
         </Pressable>
         <Text className="ml-1 flex-1 text-lg font-bold text-ink" numberOfLines={1}>
           {data?.pass.member?.name ? `${data.pass.member.name}님 수강권` : '수강권'}
@@ -114,7 +114,7 @@ export default function PassDetailScreen() {
 
           {/* 결제 (목록은 원장만 — 다른 역할은 DB 가 빈 결과를 준다 / 추가는 원장·관리자) */}
           {isAdmin ? (
-            <View className="mt-4 rounded-2xl bg-white px-4 py-3.5">
+            <View className="mt-4 rounded-2xl bg-surface px-4 py-3.5">
               <View className="flex-row items-center">
                 <Text className="flex-1 text-sm font-semibold text-stone-600">{isOwner ? '결제 기록 · 원장만 보임' : '결제'}</Text>
                 {isOwner && data.payments.length > 0 ? (
@@ -145,7 +145,7 @@ export default function PassDetailScreen() {
           {isAdmin ? (
             <View className="mt-5">
               <Text className="mb-2 text-sm font-semibold text-stone-600">관리</Text>
-              <View className="rounded-2xl bg-white p-4">
+              <View className="rounded-2xl bg-surface p-4">
                 <TextInput
                   value={memo}
                   onChangeText={setMemo}
@@ -176,7 +176,7 @@ export default function PassDetailScreen() {
                   <Ionicons
                     name={data.pass.is_active ? 'pause-circle-outline' : 'play-circle-outline'}
                     size={20}
-                    color={data.pass.is_active ? '#E11D48' : '#24766A'}
+                    color={data.pass.is_active ? '#E11D48' : '#0B7A4D'}
                   />
                   <Text className={`ml-2 text-base font-semibold ${data.pass.is_active ? 'text-rose-600' : 'text-brand-700'}`}>
                     {data.pass.is_active ? '사용 중지 (환불·양도 등)' : '다시 사용'}
@@ -188,7 +188,7 @@ export default function PassDetailScreen() {
 
           {/* 변동 내역 */}
           <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">변동 내역 {data.logs.length}건</Text>
-          <View className="rounded-2xl bg-white px-4">
+          <View className="rounded-2xl bg-surface px-4">
             {data.logs.map((log, i) => (
               <LogRow key={log.id} log={log} first={i === 0} />
             ))}
@@ -250,7 +250,7 @@ function PaymentForm({ passId, isOwner }: { passId: string; isOwner: boolean }) 
         accessibilityRole="button"
         accessibilityLabel="결제 추가"
         className="mt-3 flex-row items-center justify-center rounded-xl bg-brand-50 py-2.5 active:opacity-70">
-        <Ionicons name="add" size={16} color="#1C5D54" />
+        <Ionicons name="add" size={16} color="#0B6E46" />
         <Text className="ml-1 text-sm font-bold text-brand-700">결제 추가</Text>
       </Pressable>
     );
@@ -321,7 +321,7 @@ function PaymentForm({ passId, isOwner }: { passId: string; isOwner: boolean }) 
             onPress={() => setPaidOn((d) => d.subtract(1, 'day'))}
             disabled={!paidOn.isAfter(today.subtract(365, 'day'))}
             accessibilityLabel="결제일 하루 전"
-            className="h-8 w-8 items-center justify-center rounded-full bg-white active:opacity-70">
+            className="h-8 w-8 items-center justify-center rounded-full bg-surface active:opacity-70">
             <Ionicons name="remove" size={16} color="#44403C" />
           </Pressable>
           <Text className="mx-2 text-sm font-bold text-ink">{formatDate(paidOn.toISOString())}</Text>
@@ -329,7 +329,7 @@ function PaymentForm({ passId, isOwner }: { passId: string; isOwner: boolean }) 
             onPress={() => setPaidOn((d) => d.add(1, 'day'))}
             disabled={!paidOn.isBefore(today)}
             accessibilityLabel="결제일 하루 뒤"
-            className={`h-8 w-8 items-center justify-center rounded-full bg-white active:opacity-70 ${paidOn.isBefore(today) ? '' : 'opacity-30'}`}>
+            className={`h-8 w-8 items-center justify-center rounded-full bg-surface active:opacity-70 ${paidOn.isBefore(today) ? '' : 'opacity-30'}`}>
             <Ionicons name="add" size={16} color="#44403C" />
           </Pressable>
         </View>

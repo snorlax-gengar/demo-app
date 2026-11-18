@@ -123,7 +123,7 @@ export default function CalendarScreen() {
               onPress={() => setShowAll(!showAll)}
               accessibilityRole="switch"
               accessibilityState={{ checked: showAll }}
-              className={`flex-row items-center rounded-full px-3 py-1.5 ${showAll ? 'bg-brand-600' : 'bg-white'}`}>
+              className={`flex-row items-center rounded-full px-3 py-1.5 ${showAll ? 'bg-brand-600' : 'bg-surface'}`}>
               <Ionicons name={showAll ? 'people' : 'person'} size={14} color={showAll ? '#FFFFFF' : '#57534E'} />
               <Text className={`ml-1 text-sm font-semibold ${showAll ? 'text-white' : 'text-stone-600'}`}>
                 {showAll ? '전체 강사' : '내 수업'}
@@ -207,7 +207,7 @@ function IconButton({ icon, label, onPress }: { icon: 'chevron-back' | 'chevron-
     <Pressable
       onPress={onPress}
       accessibilityLabel={label}
-      className="h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-70">
+      className="h-10 w-10 items-center justify-center rounded-full bg-surface active:opacity-70">
       <Ionicons name={icon} size={20} color="#44403C" />
     </Pressable>
   );
@@ -236,7 +236,7 @@ function MonthGrid({
   const visible = days[35].isSame(month, 'month') ? days : days.slice(0, 35);
 
   return (
-    <View className="mx-3 mt-4 rounded-3xl bg-white px-1 pb-2 pt-3">
+    <View className="mx-3 mt-4 rounded-3xl bg-surface px-1 pb-2 pt-3">
       <View className="flex-row">
         {WEEKDAY_LABELS.map((label, i) => (
           <Text
@@ -324,7 +324,7 @@ function AgendaRow({ cls, showInstructor, onPress }: { cls: ClassOverview; showI
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-row items-center rounded-2xl bg-white p-3.5 active:opacity-70 ${past ? 'opacity-60' : ''}`}>
+      className={`flex-row items-center rounded-2xl bg-surface p-3.5 active:opacity-70 ${past ? 'opacity-60' : ''}`}>
       <View className={`mr-3 w-1 self-stretch rounded-full ${isPrivate ? 'bg-brand-700' : 'bg-brand-300'}`} />
       <View className="flex-1 pr-2">
         <Text className="text-base font-bold text-ink">{formatTimeRange(cls.starts_at, cls.ends_at)}</Text>
@@ -378,7 +378,7 @@ function WeekStrip({
             key={day.valueOf()}
             onPress={() => onSelect(day)}
             accessibilityLabel={`${formatDay(day)} 수업 ${count}개`}
-            className={`mx-0.5 flex-1 items-center rounded-2xl py-2 ${isSelected ? 'bg-brand-600' : 'bg-white'}`}>
+            className={`mx-0.5 flex-1 items-center rounded-2xl py-2 ${isSelected ? 'bg-brand-600' : 'bg-surface'}`}>
             <Text className={`text-xs ${isSelected ? 'text-brand-100' : day.isSame(today, 'day') ? 'text-brand-600' : 'text-stone-400'}`}>
               {day.format('dd')}
             </Text>

@@ -120,7 +120,7 @@ export default function SignupScreen() {
             accessibilityLabel="이용약관과 개인정보 처리방침에 동의"
             hitSlop={6}
             className="flex-row items-center">
-            <Ionicons name={agreed ? 'checkbox' : 'square-outline'} size={22} color={agreed ? '#24766A' : '#A8A29E'} />
+            <Ionicons name={agreed ? 'checkbox' : 'square-outline'} size={22} color={agreed ? '#0B7A4D' : '#A8A29E'} />
           </Pressable>
           <Text className="ml-2 flex-1 text-sm leading-6 text-stone-600">
             <Text onPress={() => router.push('/legal/terms')} className="font-semibold text-brand-700 underline">

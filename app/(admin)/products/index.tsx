@@ -39,7 +39,7 @@ export default function PassProductsScreen() {
             <EmptyView icon="pricetags-outline" title="등록된 상품이 없습니다" description="오른쪽 위 '추가'로 스튜디오 상품을 등록하세요. 예: 그룹 20회 · 3개월 · 480,000원" />
           </View>
         ) : (
-          <View className="mt-4 rounded-2xl bg-white px-4">
+          <View className="mt-4 rounded-2xl bg-surface px-4">
             {active.map((p, i) => (
               <ProductRow key={p.id} product={p} first={i === 0} onPress={() => open(p.id)} />
             ))}
@@ -49,7 +49,7 @@ export default function PassProductsScreen() {
         {hidden.length > 0 ? (
           <>
             <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">숨긴 상품 {hidden.length}개</Text>
-            <View className="rounded-2xl bg-white px-4 opacity-70">
+            <View className="rounded-2xl bg-surface px-4 opacity-70">
               {hidden.map((p, i) => (
                 <ProductRow key={p.id} product={p} first={i === 0} onPress={() => open(p.id)} />
               ))}
@@ -64,7 +64,7 @@ export default function PassProductsScreen() {
     <Screen>
       <View className="flex-row items-center px-3 py-2">
         <Pressable onPress={goBack} accessibilityLabel="뒤로" className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-          <Ionicons name="chevron-back" size={24} color="#1B1F1E" />
+          <Ionicons name="chevron-back" size={24} color="#2F3842" />
         </Pressable>
         <Text className="ml-1 flex-1 text-lg font-bold text-ink" numberOfLines={1}>
           수강권 상품 · {studio?.name}

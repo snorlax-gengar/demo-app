@@ -80,13 +80,13 @@ export default function MemberScheduleScreen() {
           <Pressable
             onPress={() => moveWeek(-1)}
             accessibilityLabel="이전 주"
-            className="h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-70">
+            className="h-10 w-10 items-center justify-center rounded-full bg-surface active:opacity-70">
             <Ionicons name="chevron-back" size={20} color="#44403C" />
           </Pressable>
           <Pressable
             onPress={() => moveWeek(1)}
             accessibilityLabel="다음 주"
-            className="h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-70">
+            className="h-10 w-10 items-center justify-center rounded-full bg-surface active:opacity-70">
             <Ionicons name="chevron-forward" size={20} color="#44403C" />
           </Pressable>
         </View>
@@ -105,7 +105,7 @@ export default function MemberScheduleScreen() {
               key={key}
               onPress={() => setSelectedDay(day)}
               accessibilityLabel={formatDay(day)}
-              className={`mx-1 flex-1 items-center rounded-2xl py-2.5 ${selected ? 'bg-brand-600' : 'bg-white'}`}>
+              className={`mx-1 flex-1 items-center rounded-2xl py-2.5 ${selected ? 'bg-brand-600' : 'bg-surface'}`}>
               <Text className={`text-xs ${selected ? 'text-brand-100' : isToday ? 'text-brand-600' : 'text-stone-400'}`}>
                 {day.format('dd')}
               </Text>
@@ -131,7 +131,7 @@ export default function MemberScheduleScreen() {
             <Pressable
               key={filter.key}
               onPress={() => setTypeFilter(filter.key)}
-              className={`rounded-full px-4 py-2 ${active ? 'bg-ink' : 'bg-white'}`}>
+              className={`rounded-full px-4 py-2 ${active ? 'bg-ink' : 'bg-surface'}`}>
               <Text className={`text-sm font-semibold ${active ? 'text-white' : 'text-stone-500'}`}>{filter.label}</Text>
             </Pressable>
           );

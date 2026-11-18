@@ -16,7 +16,7 @@ export default function LegalScreen() {
     <Screen>
       <View className="flex-row items-center px-3 py-2">
         <Pressable onPress={goBack} accessibilityLabel="뒤로" className="h-10 w-10 items-center justify-center rounded-full active:bg-stone-200">
-          <Ionicons name="chevron-back" size={24} color="#1B1F1E" />
+          <Ionicons name="chevron-back" size={24} color="#2F3842" />
         </Pressable>
         <Text className="ml-1 flex-1 text-lg font-bold text-ink">{content?.title ?? '문서를 찾을 수 없습니다'}</Text>
       </View>
