@@ -70,6 +70,8 @@ manual = [
      '결제일 + 버튼이 오늘에서 비활성, 추가 후 결제 기록 2건·합계 200,000→250,000원, 매출 11월 550,000원·3건·계좌이체 50,000원(9%)·내역에 "[테스트] 잔금" 표시', 'ok', [f'M06-{i}.jpg' for i in range(1, 5)]),
     ('TC-M07', '휴대폰 푸시 (iPhone Expo Go, 운영 DB)', '회원(노이솔) 휴대폰 알림 허용 → 원장이 웹에서 11/19 20:00 [테스트] 수업에 대신 예약 → 직원 취소(복구) → 휴대폰에 푸시 2건',
      '"예약이 확정됐어요 — 11월 19일 (목) 20:00 … 필라테스 나무에서 대신 예약했어요. 수강권 1회가 차감됐어요." / "예약이 취소됐어요 — … 필라테스 나무에서 취소했어요. 수강권 1회가 복구됐어요." 둘 다 즉시 도착, 수강권 19→18→19회', 'ok', ['M07-1.jpg', 'M07-p1.jpg', 'M07-2.jpg', 'M07-3.jpg', 'M07-p2.jpg']),
+    ('TC-M08', '대기·자동 확정·폐강·전날 알림 푸시 + 알림 누르기 (iPhone Expo Go, 운영 DB)', '새 [테스트] 수업(정원 2)에서 대신 대기 → 자동 확정 → 폐강, SQL 로 전날 알림 생성 → 앱을 내려둔 상태에서 푸시 누르기 → 알림함',
+     '푸시 4종(대기 신청 등록·대기에서 확정·폐강·내일 수업) 도착, 누르면 Studio 앱의 알림함으로 이동. 알림함 위 새로고침 표시가 남는 문제 발견(F-04) → 수정. 참고: 앱을 완전히 종료한 뒤 누르면 Expo Go 첫 화면이 열림(Expo Go 한계, 배포 앱에서는 앱이 바로 열림)', 'ok', ['M08-1.jpg', 'M08-t1.jpg', 'M08-t14.jpg', 'M08-t25.jpg', 'M08-t27.jpg']),
 ]
 def mrow(m):
     st = {'ok': '<span class="b ok">통과</span>', 'wait': '<span class="b wait">대기</span>'}[m[4]]
@@ -135,14 +137,16 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 {cards_ui}
 
 <h2>5. 직접 확인 (실제 계정·운영 DB)</h2>
-<p class="sub">로그인은 사용자가 직접 하고, TC-M04~M07 조작은 Claude 가 브라우저에서 진행. TC-M03 캡처 순서: 수정 전 입력칸 → 수정 후 입력칸 → 기본 팝업·하단 탭 → 메모 입력. 캡처의 이메일·연락처·초대 코드는 가림 처리.</p>
+<p class="sub">로그인은 사용자가 직접 하고, TC-M04~M08 조작은 Claude 가 브라우저에서 진행. TC-M03 캡처 순서: 수정 전 입력칸 → 수정 후 입력칸 → 기본 팝업·하단 탭 → 메모 입력. 캡처의 이메일·연락처·초대 코드는 가림 처리.</p>
 <table><tr><th>ID</th><th>항목</th><th>기대 결과</th><th>실제 결과</th><th>판정</th></tr>{rows_manual}</table>
 {manual_cards}
 <h2>6. 발견 사항</h2>
 <table><tr><th>ID</th><th>내용</th><th>근거</th><th>조치</th></tr>
 <tr><td class="id">F-01</td><td>강사가 <b>다른 강사 수업</b>의 회원 예약도 취소(기본 횟수 복구)·대신 예약할 수 있었음</td><td>TC-M01 캡처 3, DB <code>cancel_booking</code>·<code>book_class</code> 가 직원 전체 허용</td><td><span class="b ok">조치 완료</span> 강사는 본인 수업만, 원장·실장은 전체 (패치 006, TC-D30~D33·TC-U11)</td></tr>
 <tr><td class="id">F-02</td><td>웹에서 기존 메모를 편집하면 커서가 맨 앞에 와서 입력이 앞에 붙음</td><td>화면 테스트 중 발견 ("/ 테스트허리 디스크…")</td><td><span class="b ok">조치 완료</span> 커서를 끝으로 이동, TC-U08 에 검사 추가</td></tr>
-<tr><td class="id">F-03</td><td>iPhone 에서 한 줄 입력칸에 입력하는 동안 글자 아래(g, @ 등)가 잘려 보임 (키보드를 내리면 정상)</td><td>TC-M03 캡처 1 (수정 전) — 한 줄 입력칸에 줄 높이가 함께 지정된 iOS 동작</td><td><span class="b ok">조치 완료</span> 한 줄 입력칸 12곳을 글자 크기만 지정하도록 변경, 캡처 2 (수정 후)</td></tr></table>
+<tr><td class="id">F-03</td><td>iPhone 에서 한 줄 입력칸에 입력하는 동안 글자 아래(g, @ 등)가 잘려 보임 (키보드를 내리면 정상)</td><td>TC-M03 캡처 1 (수정 전) — 한 줄 입력칸에 줄 높이가 함께 지정된 iOS 동작</td><td><span class="b ok">조치 완료</span> 한 줄 입력칸 12곳을 글자 크기만 지정하도록 변경, 캡처 2 (수정 후)</td></tr>
+<tr><td class="id">F-04</td><td>푸시를 눌러 알림함이 열릴 때 위쪽 새로고침 표시(스피너)가 사라지지 않고 목록이 밀린 채 남음 (iOS)</td><td>TC-M08 화면 기록 마지막 장면 — 알림 수신·읽음 처리로 생긴 자동 새로고침에도 스피너를 켜던 구조</td><td><span class="b ok">조치 완료</span> 사용자가 직접 당겼을 때만 표시하도록 11개 화면 변경 (hooks/usePullRefresh)</td></tr>
+<tr><td class="id">F-05</td><td>수업 등록 화면을 주소로 바로 열면 등록 후 개발용 "GO_BACK" 경고, 확인창 버튼에 접근성 이름 없음</td><td>TC-M08 준비 중 발견</td><td><span class="b ok">조치 완료</span> 돌아갈 화면이 없으면 달력으로, 확인창 버튼에 버튼 글자를 접근성 이름으로 지정</td></tr></table>
 </main></body></html>'''
 open(OUT, 'w').write(page)
 print('written', OUT, len(page) // 1024, 'KB')
