@@ -60,7 +60,8 @@ manual = [
     ('TC-M01', '강사 계정 실제 로그인', '강사로 로그인 → 내 수업만 보임(전체 강사 보기 토글 없음), 회원 탭은 보기 전용(발급·역할·메모 편집 없음), 초대 코드 카드 없음',
      '토글 없음, 회원 상세에 발급 버튼·역할 변경·메모 없음, 내 정보에 초대 코드 카드 없음 (기대 결과의 "회원 탭 없음"은 설계와 달라 "보기 전용"으로 정정)', 'ok', ['M01-1.jpg', 'M01-2.jpg', 'M01-3.jpg', 'M01-4.jpg']),
     ('TC-M02', '운영 DB 패치 005', 'Supabase SQL Editor 에서 005 실행', '사용자가 실행 완료 (2026-11-18)', 'ok', []),
-    ('TC-M03', '휴대폰 실행', 'Expo Go 로 실행 → 휴대폰 기본 팝업, 키보드가 메모 입력칸을 가리지 않음, 탭 글자 잘림 없음', '실행 방법 안내함, 결과 대기', 'wait', []),
+    ('TC-M03', '휴대폰 실행 (iPhone, Expo Go SDK 58)', '휴대폰 기본 팝업, 입력칸 글자 잘림 없음, 키보드가 메모 입력칸을 가리지 않음, 탭 글자 잘림 없음',
+     '로그아웃 확인창이 iOS 기본 팝업으로 표시, 입력 중 글자 하단 잘림 발견(F-03) → 수정 후 정상, 메모 입력 시 입력칸이 키보드 위에 보임, 하단 탭 글자 정상', 'ok', ['M03-0.jpg', 'M03-2.jpg', 'M03-1.jpg', 'M03-3.jpg']),
     ('TC-M04', '24시간 이내 취소(실제 데이터)', '회원(노이솔)으로 오늘 19:00 그룹 예약 → 취소 → 경고 후 취소, 횟수 복구 안 됨',
      '예약 시 그룹 20→19회, 취소 전 "24시간 이내 복구 안 됨" 경고, 취소 후 "복구되지 않았습니다" 안내, 잔여 19회 유지·다가오는 예약에서 사라짐', 'ok', [f'M04-{i}.jpg' for i in range(1, 7)]),
 ]
@@ -106,6 +107,7 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 <table><tr><th>구분</th><th>내용</th><th>관련 테스트</th></tr>
 <tr><td>버그 수정</td><td>대기 자동 승격 시 수강권 변동 내역에 빈자리를 만든 사람(원장 등)이 처리자로 기록되던 문제 → 처리자 없음 + "자동 확정" 메모, 앱에서 "· 자동" 표시. 패치 <code>005_auto_promotion_actor.sql</code> (기존 기록도 정리)</td><td class="id">TC-D09, TC-D29, TC-U07</td></tr>
 <tr><td>권한 수정</td><td>강사는 <b>본인 수업</b>의 예약만 취소·대신 예약, 원장·실장은 모든 수업 관리 (F-01). DB 함수 + 회원 상세 취소 버튼. 패치 <code>006_class_scoped_staff.sql</code></td><td class="id">TC-D30~D33, TC-U11</td></tr>
+<tr><td>버그 수정</td><td>iPhone 한 줄 입력칸에서 입력 중 글자 아래가 잘리던 문제 (F-03)</td><td class="id">TC-M03</td></tr>
 <tr><td>개선</td><td>회원 메모 편집 시 화면이 밀리던 문제(웹) 수정, 휴대폰에서 키보드가 입력칸을 가리지 않도록 처리. 편집을 열면 커서가 기존 메모 <b>끝</b>에 오도록 수정 (F-02)</td><td class="id">TC-U08</td></tr>
 <tr><td>정리</td><td><code>Claude outputs/</code> 폴더를 git 제외 목록에 추가(테스트 보고서의 개인정보 보호)</td><td>-</td></tr>
 <tr><td>지난 변경 검증</td><td>로그아웃(앱 안 확인창), 회원 대신 예약, 출석·노쇼 시간 제한, 로그인 문구</td><td class="id">TC-U01~U06, U09, U10</td></tr></table>
@@ -121,13 +123,14 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 {cards_ui}
 
 <h2>5. 직접 확인 (실제 계정·운영 DB)</h2>
-<p class="sub">로그인은 사용자가 직접 하고, TC-M04 조작은 Claude 가 브라우저에서 진행. 캡처의 이메일·연락처는 가림 처리.</p>
+<p class="sub">로그인은 사용자가 직접 하고, TC-M04 조작은 Claude 가 브라우저에서 진행. TC-M03 캡처 순서: 수정 전 입력칸 → 수정 후 입력칸 → 기본 팝업·하단 탭 → 메모 입력. 캡처의 이메일·연락처·초대 코드는 가림 처리.</p>
 <table><tr><th>ID</th><th>항목</th><th>기대 결과</th><th>실제 결과</th><th>판정</th></tr>{rows_manual}</table>
 {manual_cards}
 <h2>6. 발견 사항</h2>
 <table><tr><th>ID</th><th>내용</th><th>근거</th><th>조치</th></tr>
 <tr><td class="id">F-01</td><td>강사가 <b>다른 강사 수업</b>의 회원 예약도 취소(기본 횟수 복구)·대신 예약할 수 있었음</td><td>TC-M01 캡처 3, DB <code>cancel_booking</code>·<code>book_class</code> 가 직원 전체 허용</td><td><span class="b ok">조치 완료</span> 강사는 본인 수업만, 원장·실장은 전체 (패치 006, TC-D30~D33·TC-U11)</td></tr>
-<tr><td class="id">F-02</td><td>웹에서 기존 메모를 편집하면 커서가 맨 앞에 와서 입력이 앞에 붙음</td><td>화면 테스트 중 발견 ("/ 테스트허리 디스크…")</td><td><span class="b ok">조치 완료</span> 커서를 끝으로 이동, TC-U08 에 검사 추가</td></tr></table>
+<tr><td class="id">F-02</td><td>웹에서 기존 메모를 편집하면 커서가 맨 앞에 와서 입력이 앞에 붙음</td><td>화면 테스트 중 발견 ("/ 테스트허리 디스크…")</td><td><span class="b ok">조치 완료</span> 커서를 끝으로 이동, TC-U08 에 검사 추가</td></tr>
+<tr><td class="id">F-03</td><td>iPhone 에서 한 줄 입력칸에 입력하는 동안 글자 아래(g, @ 등)가 잘려 보임 (키보드를 내리면 정상)</td><td>TC-M03 캡처 1 (수정 전) — 한 줄 입력칸에 줄 높이가 함께 지정된 iOS 동작</td><td><span class="b ok">조치 완료</span> 한 줄 입력칸 12곳을 글자 크기만 지정하도록 변경, 캡처 2 (수정 후)</td></tr></table>
 </main></body></html>'''
 open(OUT, 'w').write(page)
 print('written', OUT, len(page) // 1024, 'KB')
