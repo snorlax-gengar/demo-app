@@ -146,7 +146,7 @@ export default function NewClassScreen() {
               onChangeText={setTitle}
               placeholder={defaultTitle(type, effectiveCapacity)}
               placeholderTextColor="#A8A29E"
-              className="rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-base text-ink"
+              className="rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-[16px] text-ink"
             />
           </Field>
 
@@ -228,7 +228,7 @@ export default function NewClassScreen() {
               onChangeText={setLocation}
               placeholder="예: A룸"
               placeholderTextColor="#A8A29E"
-              className="rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-base text-ink"
+              className="rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-[16px] text-ink"
             />
           </Field>
         </ScrollView>

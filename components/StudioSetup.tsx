@@ -67,7 +67,7 @@ export function StudioSetup({ mode, onClose, onDone }: Props) {
       .catch((error: Error) => showDialog('만들 수 없습니다', error.message));
   };
 
-  const fieldClass = 'rounded-2xl border border-stone-200 bg-white px-4 py-4 text-base text-ink';
+  const fieldClass = 'rounded-2xl border border-stone-200 bg-white px-4 py-4 text-[16px] text-ink';
 
   return (
     <KeyboardAvoidingView className="flex-1 bg-canvas" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

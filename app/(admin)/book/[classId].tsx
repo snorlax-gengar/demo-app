@@ -144,7 +144,7 @@ export default function StaffBookScreen() {
               onChangeText={setSearch}
               placeholder="이름 또는 전화번호"
               placeholderTextColor="#A8A29E"
-              className="ml-2 flex-1 py-3 text-base text-ink"
+              className="ml-2 flex-1 py-3 text-[16px] text-ink"
               autoCorrect={false}
             />
           </View>

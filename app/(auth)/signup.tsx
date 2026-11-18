@@ -42,7 +42,7 @@ export default function SignupScreen() {
     }
   };
 
-  const fieldClass = 'rounded-2xl border border-stone-200 bg-white px-4 py-4 text-base text-ink';
+  const fieldClass = 'rounded-2xl border border-stone-200 bg-white px-4 py-4 text-[16px] text-ink';
   const labelClass = 'mb-2 mt-4 text-sm font-semibold text-stone-600';
 
   return (

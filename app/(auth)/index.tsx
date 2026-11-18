@@ -74,7 +74,7 @@ export default function LoginScreen() {
           keyboardType="email-address"
           textContentType="emailAddress"
           returnKeyType="next"
-          className="rounded-2xl border border-stone-200 bg-white px-4 py-4 text-base text-ink"
+          className="rounded-2xl border border-stone-200 bg-white px-4 py-4 text-[16px] text-ink"
         />
 
         <Text className="mb-2 mt-4 text-sm font-semibold text-stone-600">비밀번호</Text>
@@ -87,7 +87,7 @@ export default function LoginScreen() {
           textContentType="password"
           returnKeyType="go"
           onSubmitEditing={onSubmit}
-          className="rounded-2xl border border-stone-200 bg-white px-4 py-4 text-base text-ink"
+          className="rounded-2xl border border-stone-200 bg-white px-4 py-4 text-[16px] text-ink"
         />
 
         {error ? <Text className="mt-3 text-sm text-rose-600">{error}</Text> : null}

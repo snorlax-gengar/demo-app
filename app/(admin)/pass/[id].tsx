@@ -135,7 +135,7 @@ export default function PassDetailScreen() {
                   placeholder="사유 메모 (선택) — 예: 여행 홀딩, 수업 보상"
                   placeholderTextColor="#A8A29E"
                   maxLength={200}
-                  className="rounded-xl bg-stone-100 px-3 py-3 text-sm text-ink"
+                  className="rounded-xl bg-stone-100 px-3 py-3 text-[14px] text-ink"
                 />
 
                 <Text className="mt-4 text-sm font-semibold text-ink">기간 연장 (홀딩·보상)</Text>

@@ -152,7 +152,7 @@ export default function IssuePassScreen() {
                 onChangeText={setName}
                 placeholder={defaultName(type, count)}
                 placeholderTextColor="#A8A29E"
-                className="rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-base text-ink"
+                className="rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-[16px] text-ink"
               />
             </Field>
 
@@ -184,7 +184,7 @@ export default function IssuePassScreen() {
                   placeholder="예: 550,000"
                   placeholderTextColor="#A8A29E"
                   keyboardType="number-pad"
-                  className="flex-1 py-3.5 text-base text-ink"
+                  className="flex-1 py-3.5 text-[16px] text-ink"
                 />
                 <Text className="text-base text-stone-500">원</Text>
               </View>
@@ -209,7 +209,7 @@ export default function IssuePassScreen() {
                 placeholder="예: 체험 후 등록, 지인 할인"
                 placeholderTextColor="#A8A29E"
                 maxLength={200}
-                className="rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-base text-ink"
+                className="rounded-2xl border border-stone-200 bg-white px-4 py-3.5 text-[16px] text-ink"
               />
             </Field>
           </ScrollView>

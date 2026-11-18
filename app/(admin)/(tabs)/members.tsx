@@ -86,7 +86,7 @@ export default function MembersScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             clearButtonMode="while-editing"
-            className="ml-2 flex-1 py-3.5 text-base text-ink"
+            className="ml-2 flex-1 py-3.5 text-[16px] text-ink"
           />
         </View>
       </View>
