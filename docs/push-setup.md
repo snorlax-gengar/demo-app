@@ -35,11 +35,14 @@ npx eas-cli@latest init       # app.json 에 extra.eas.projectId 가 추가됨
 app.json 이 바뀌면 커밋해 주세요(또는 Claude 에게 알려주면 커밋).
 
 ## 4. 발송 함수 배포 (Supabase Edge Function)
+`D:\demo-app` 에서 (Docker 필요 없음):
 ```
 npx supabase@latest login
-npx supabase@latest link --project-ref <프로젝트 ref>     # Supabase 주소 https://<ref>.supabase.co 의 <ref>
-npx supabase@latest functions deploy send-push
+npx supabase@latest functions deploy send-push --project-ref <프로젝트 ref> --use-api
 ```
+- `<프로젝트 ref>`: `.env` 의 `EXPO_PUBLIC_SUPABASE_URL` = `https://<ref>.supabase.co` 의 `<ref>` 부분
+- `--project-ref` 를 주면 `supabase link` 없이 바로 그 프로젝트로 올라갑니다.
+- "config.toml 이 없다"는 오류가 나면 `npx supabase@latest init` 을 한 번 실행한 뒤 다시 배포하세요(로컬 설정 파일만 만들고 DB 는 건드리지 않음).
 
 ## 5. 알림이 쌓이면 함수 호출 (Database Webhook)
 Supabase → **Database → Webhooks → Create a new hook**
