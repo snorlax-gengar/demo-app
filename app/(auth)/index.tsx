@@ -1,5 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Link } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { appleAvailable, signInWithApple, signInWithBrowser, type SocialProvider, type SocialResult } from '@/lib/socialAuth';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
@@ -21,7 +24,23 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [social, setSocial] = useState<SocialProvider | null>(null);
+  const [showApple, setShowApple] = useState(false);
+  useEffect(() => {
+    void appleAvailable().then(setShowApple);
+  }, []);
+
   const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
+
+  const onSocial = async (provider: SocialProvider) => {
+    if (social) return;
+    setSocial(provider);
+    setError(null);
+    const r: SocialResult = provider === 'apple' ? await signInWithApple() : await signInWithBrowser(provider);
+    setSocial(null);
+    if (r && r !== 'cancelled') setError(r);
+    // 성공하면 루트 레이아웃이 처음이면 약관 동의, 아니면 내 화면으로 보낸다
+  };
 
   const onSubmit = async () => {
     if (!canSubmit) return;
@@ -106,6 +125,52 @@ export default function LoginScreen() {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text className="text-base font-bold text-white">로그인</Text>
+          )}
+        </Pressable>
+
+        {/* 간편 로그인 */}
+        <View className="my-6 flex-row items-center">
+          <View className="h-px flex-1 bg-stone-200" />
+          <Text className="mx-3 text-xs text-stone-400">또는 간편하게</Text>
+          <View className="h-px flex-1 bg-stone-200" />
+        </View>
+        <Pressable
+          onPress={() => void onSocial('kakao')}
+          disabled={!!social}
+          accessibilityRole="button"
+          accessibilityLabel="카카오로 계속하기"
+          className="h-[52px] flex-row items-center justify-center rounded-2xl bg-[#FEE500] active:opacity-80">
+          {social === 'kakao' ? (
+            <ActivityIndicator color="#191919" />
+          ) : (
+            <>
+              <Ionicons name="chatbubble" size={18} color="#191919" />
+              <Text className="ml-2 text-base font-semibold text-[#191919]">카카오로 계속하기</Text>
+            </>
+          )}
+        </Pressable>
+        {showApple ? (
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+            cornerRadius={16}
+            style={{ height: 52, marginTop: 10 }}
+            onPress={() => void onSocial('apple')}
+          />
+        ) : null}
+        <Pressable
+          onPress={() => void onSocial('google')}
+          disabled={!!social}
+          accessibilityRole="button"
+          accessibilityLabel="Google로 계속하기"
+          className="mt-2.5 h-[52px] flex-row items-center justify-center rounded-2xl border border-stone-300 bg-white active:opacity-80">
+          {social === 'google' ? (
+            <ActivityIndicator color="#1B1F1E" />
+          ) : (
+            <>
+              <Ionicons name="logo-google" size={18} color="#1B1F1E" />
+              <Text className="ml-2 text-base font-semibold text-ink">Google로 계속하기</Text>
+            </>
           )}
         </Pressable>
 

@@ -8,9 +8,9 @@ Supabase → SQL Editor 에서 `supabase/patches/012_withdraw_account.sql` 전�
 
 ## 2. Edge Function 배포
 ```bash
-npx supabase@latest functions deploy delete-account --project-ref <ref> --use-api
+npx supabase@latest functions deploy delete-account --project-ref <ref> --use-api --no-verify-jwt
 ```
-- `send-push` 와 달리 **`--no-verify-jwt` 를 붙이지 않습니다** (로그인한 본인만 호출 가능해야 함).
+- 로그인 확인은 함수 코드가 직접 합니다(토큰이 없거나 잘못되면 401). 다시 배포할 때도 `--no-verify-jwt` 를 붙여야 대시보드에서 끈 설정이 유지됩니다.
 - 필요한 값(SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY)은 Supabase 가 자동으로 넣어 줍니다.
 
 ## 3. 확인

@@ -1,7 +1,8 @@
 // Supabase Edge Function: delete-account (회원 탈퇴)
 // 앱의 '회원 탈퇴' 버튼이 로그인 토큰과 함께 호출한다. 로직은 core.ts, DB 쪽은 patch 012(withdraw_account).
-// 배포: npx supabase functions deploy delete-account --project-ref <ref> --use-api
-//       (send-push 와 달리 --no-verify-jwt 를 붙이지 않는다: 로그인한 사람만 부를 수 있어야 함)
+// 배포: npx supabase functions deploy delete-account --project-ref <ref> --use-api --no-verify-jwt
+//       (로그인 확인은 아래 코드가 직접 한다: 토큰이 없거나 잘못되면 401. 대시보드의 'Verify JWT' 를 켜 두면
+//        새 JWT 서명 키를 쓰는 프로젝트에서 정상 요청도 막힐 수 있어 끈다)
 // 필요한 값: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (모두 기본 제공)
 import { createClient } from 'npm:@supabase/supabase-js@2';
 

@@ -17,7 +17,13 @@ const users = {
   'manager@x.com': { id: 'mg1', name: '한실장', phone: '010-7777-1111' },
   'new1@x.com': { id: 'n1', name: '신규원장', phone: null },
   'new2@x.com': { id: 'n2', name: '신규회원', phone: null },
+  // 카카오로 처음 들어온 사람: 약관 동의 기록 없음, 이름은 카카오 닉네임
+  'kakao@x.com': { id: 'k1', name: '카카오닉네임', phone: null },
 };
+// 계정 정보(user_metadata): 이메일 가입자는 약관 동의 기록이 있다고 가정
+const userMeta = {};
+const metaOf = (id) => (userMeta[id] ??= id === 'k1' ? { name: '카카오닉네임' } : { terms_agreed_at: '2026-11-18T00:00:00Z', terms_version: 'test' });
+const appMetaOf = (id) => ({ provider: id === 'k1' ? 'kakao' : 'email' });
 const extraPeople = ['최지우', '정민서', '한유진', '오세훈'].map((n, i) => ({ id: 'mm' + i, name: n, phone: `010-55${i}5-12${i}4`, email: `m${i}@x.com` }));
 const profileOf = (id) => {
   const e = Object.entries(users).find(([, u]) => u.id === id);
@@ -117,16 +123,24 @@ http.createServer(async (req, res) => {
     const { email } = JSON.parse(body || '{}');
     if (email === 'unconfirmed@x.com') return send(400, { code: 400, error_code: 'email_not_confirmed', msg: 'Email not confirmed' });
     if (!users[email]) return send(400, { error: 'invalid_grant', error_description: 'Invalid login credentials', msg: 'Invalid login credentials', code: 400 });
-    return send(200, { access_token: tokenFor(email), token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(now / 1000) + 3600, refresh_token: 'r', user: { id: users[email].id, email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {} } });
+    return send(200, { access_token: tokenFor(email), token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(now / 1000) + 3600, refresh_token: 'r', user: { id: users[email].id, email, aud: 'authenticated', role: 'authenticated', app_metadata: appMetaOf(users[email].id), user_metadata: metaOf(users[email].id) } });
   }
   // 비밀번호 찾기 메일 요청 / 재설정 링크로 비밀번호 변경
   if (p === '/auth/v1/recover') { rpcLog.push({ fn: 'recover', args: { ...JSON.parse(body || '{}'), redirect_to: url.searchParams.get('redirect_to') } }); return send(200, {}); }
   if (p === '/auth/v1/user' && req.method === 'PUT') {
-    const id = meOf(req); const pr = profileOf(id);
-    rpcLog.push({ fn: 'update_user', args: { me: id, password: JSON.parse(body || '{}').password ? '(입력됨)' : null } });
-    return send(200, { id, email: pr?.email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {} });
+    const id = meOf(req); const pr = profileOf(id); const j = JSON.parse(body || '{}');
+    if (j.data) Object.assign(metaOf(id), j.data);
+    rpcLog.push({ fn: 'update_user', args: { me: id, password: j.password ? '(입력됨)' : null, data: j.data ?? null } });
+    return send(200, { id, email: pr?.email, aud: 'authenticated', role: 'authenticated', app_metadata: appMetaOf(id), user_metadata: metaOf(id) });
   }
-  if (p === '/auth/v1/user') { const id = meOf(req); const pr = profileOf(id); return send(200, { id, email: pr.email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {} }); }
+  if (p === '/auth/v1/user') { const id = meOf(req); const pr = profileOf(id); return send(200, { id, email: pr.email, aud: 'authenticated', role: 'authenticated', app_metadata: appMetaOf(id), user_metadata: metaOf(id) }); }
+  // 소셜 로그인(가짜): Supabase 인증 주소 → 바로 앱 주소로 토큰과 함께 돌려보낸다 (카카오·구글 로그인 성공 상황)
+  if (p === '/auth/v1/authorize') {
+    const provider = url.searchParams.get('provider'); const back = url.searchParams.get('redirect_to');
+    rpcLog.push({ fn: 'authorize', args: { provider, redirect_to: back, scopes: url.searchParams.get('scopes') } });
+    res.writeHead(302, { location: `${back}#access_token=${tokenFor('kakao@x.com')}&expires_in=3600&refresh_token=rk&token_type=bearer&provider_token=x` });
+    return res.end();
+  }
   if (p === '/auth/v1/logout') return send(204, null);
 
   // 가입: 동의 기록(user_metadata)만 남기고 '이메일 인증' 흐름(세션 없음)으로 응답
@@ -183,7 +197,10 @@ http.createServer(async (req, res) => {
     if (table === 'rpc/book_class') return send(200, { id: 'nb1', status: 'confirmed', member_id: args.p_member_id, class_id: args.p_class_id });
     if (table.startsWith('rpc/')) return send(200, { id: args.p_booking_id ?? 'nb', status: args.p_status ?? 'confirmed', pass_refunded: true });
 
-    if (table === 'users') return out([profileOf(eq(q.id))].filter(Boolean));
+    if (table === 'users') {
+      if (req.method === 'PATCH') { const u = Object.values(users).find((x) => x.id === eq(q.id)); if (u && args.name) u.name = args.name; rpcLog.push({ fn: 'users_update', args: { id: eq(q.id), ...args } }); return send(204, null); }
+      return out([profileOf(eq(q.id))].filter(Boolean));
+    }
     if (table === 'studio_members') {
       if (req.method === 'PATCH') { const m = members.find((x) => x.studio_id === eq(q.studio_id) && x.user_id === eq(q.user_id)); m.memo = args.memo; return send(204, null); }
       let rows = members.filter((m) => m.status === 'active');

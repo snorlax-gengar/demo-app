@@ -54,6 +54,15 @@ export default function RootLayout() {
   // 세션 복원 중이거나, 로그인은 됐지만 아직 소속·역할을 모르는 동안에는 어떤 화면도 보여주지 않는다
   const booting = !initialized || (!!session && !accountLoaded);
   const signedIn = !!session;
+  // 약관 동의 기록이 없는 계정(소셜 로그인 첫 진입, 약관 이전 가입자)은 동의 화면부터
+  const needsConsent = signedIn && !session?.user.user_metadata?.terms_agreed_at;
+  const ready = signedIn && !needsConsent;
+
+  // 동의 화면은 다른 화면보다 먼저: 로그인 직후 어떤 주소에 있든 동의 화면으로 보낸다
+  const consentNeeded = !booting && needsConsent;
+  useEffect(() => {
+    if (consentNeeded) router.replace('/complete-profile');
+  }, [consentNeeded, router]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -71,27 +80,31 @@ export default function RootLayout() {
               <Stack.Screen name="(auth)" />
             </Stack.Protected>
             {/* 가입 직후 소속 스튜디오가 없으면: 만들기 또는 초대 코드로 참여 */}
-            <Stack.Protected guard={signedIn && !hasStudio}>
+            <Stack.Protected guard={needsConsent}>
+              <Stack.Screen name="complete-profile" />
+            </Stack.Protected>
+            <Stack.Protected guard={ready && !hasStudio}>
               <Stack.Screen name="(onboarding)" />
             </Stack.Protected>
-            <Stack.Protected guard={signedIn && hasStudio && role === 'member'}>
+            <Stack.Protected guard={ready && hasStudio && role === 'member'}>
               <Stack.Screen name="(member)" />
             </Stack.Protected>
-            <Stack.Protected guard={signedIn && hasStudio && isStaffRole(role)}>
+            <Stack.Protected guard={ready && hasStudio && isStaffRole(role)}>
               <Stack.Screen name="(admin)" />
             </Stack.Protected>
             {/* 이미 소속이 있는 사람이 다른 스튜디오를 추가할 때 / 알림함 */}
-            <Stack.Protected guard={signedIn && hasStudio}>
+            <Stack.Protected guard={ready && hasStudio}>
               <Stack.Screen name="add-studio" />
               <Stack.Screen name="notifications" />
             </Stack.Protected>
-            <Stack.Protected guard={signedIn}>
+            <Stack.Protected guard={ready}>
               <Stack.Screen name="withdraw" />
             </Stack.Protected>
             {/* 약관·개인정보 처리방침: 로그인 전후 모두 */}
             <Stack.Screen name="legal/[doc]" />
             {/* 비밀번호 재설정 메일 링크: 로그인 전후 모두 */}
             <Stack.Screen name="reset-password" />
+            <Stack.Screen name="auth-callback" />
           </Stack>
         )}
         <DialogHost />

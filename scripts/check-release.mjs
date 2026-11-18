@@ -91,6 +91,12 @@ check('TC-R09', '스토어 제출용 공개 웹페이지(처리방침·계정 �
   return [del.includes('회원 탈퇴') ? 'warn' : 'fail', `파일 ${need.length}개 생성됨 · 아직 인터넷에 올리지 않음(호스팅 후 URL 필요)`];
 });
 
+check('TC-R10', '간편 로그인(카카오·애플·구글) 앱 설정', 'iOS 애플 로그인 권한(usesAppleSignIn)·플러그인, 앱 주소 스킴, 공급자 키 입력은 대시보드에서', () => {
+  const plugins = app.plugins.map((p) => (Array.isArray(p) ? p[0] : p));
+  const ok = app.ios?.usesAppleSignIn === true && plugins.includes('expo-apple-authentication') && plugins.includes('expo-web-browser') && app.scheme === 'piq';
+  return [ok ? 'warn' : 'fail', ok ? '앱 설정 완료 · Supabase 에 카카오·애플·구글 키 입력은 아직 (docs/social-login-setup.md)' : '앱 설정 누락'];
+});
+
 const out = process.argv[2];
 if (out) fs.writeFileSync(out, JSON.stringify({ results }, null, 2));
 const fails = results.filter((r) => r.status === 'fail').length;

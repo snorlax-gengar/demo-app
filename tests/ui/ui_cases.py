@@ -632,7 +632,7 @@ with sync_playwright() as p:
         pg.wait_for_selector('input[placeholder="name@example.com"]', timeout=15000)
         call = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'update_user']
         assert mismatch == 1 and dis == 'true', (mismatch, dis)
-        assert len(call) == 1 and call[0]['args'] == {'me': 'm1', 'password': '(입력됨)'}, call
+        assert len(call) == 1 and call[0]['args']['me'] == 'm1' and call[0]['args']['password'] == '(입력됨)', call
         return '불일치 안내·버튼 비활성 → 변경 요청 1번(링크의 계정 m1) → 완료 → 로그인 화면(자동 로그인 없음)'
 
     @case('TC-U30', '비밀번호 찾기', '만료됐거나 이미 쓴 링크로 열면 입력칸 대신 다시 받기 안내가 보인다', '"링크가 만료됐거나 이미 사용됐어요" + "메일 다시 받기" → 비밀번호 찾기 화면')
@@ -659,6 +659,51 @@ with sync_playwright() as p:
         for e in [e for e in errors if 'status of 400' in e]:
             errors.remove(e)  # 서버가 400 으로 거절하는 것이 의도한 동작
         return '안내 "이메일 인증이 아직 안 됐어요. 가입할 때 받은 메일의 링크를 눌러 주세요."'
+
+    @case('TC-U32', '소셜 로그인', '로그인 화면의 "카카오로 계속하기" → 카카오 로그인(가짜 서버) → 앱으로 돌아와 로그인되고, 처음이면 약관 동의 화면이 뜬다', '카카오·구글 버튼 표시(웹은 애플 숨김) → 인증 요청(provider=kakao, 돌아올 주소 /auth-callback) → "거의 다 됐어요", 이름칸에 카카오 닉네임')
+    def _():
+        pg.goto(BASE + '/')
+        pg.wait_for_selector('input[placeholder="name@example.com"]', timeout=30000)
+        kakao, google = pg.get_by_label('카카오로 계속하기'), pg.get_by_label('Google로 계속하기')
+        n_k, n_g = kakao.count(), google.count()
+        shot('TC-U32a', full=True)
+        with c.expect_page(timeout=15000) as pop:
+            kakao.click()
+        popup = pop.value
+        popup.wait_for_load_state()
+        back_url = popup.url  # 카카오(가짜) 로그인 후 돌아온 주소: …/auth-callback#access_token=…
+        popup.close()
+        # 휴대폰에서는 앱 안 브라우저가 이 주소를 앱에 넘겨준다. 웹 테스트에서는 같은 주소를 앱에서 열어 재현
+        pg.goto(back_url)
+        pg.get_by_text('거의 다 됐어요').wait_for(timeout=20000)
+        name = pg.locator('input[placeholder="홍길동"]').input_value()
+        pg.wait_for_timeout(300)
+        shot('TC-U32')
+        call = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'authorize']
+        assert n_k == 1 and n_g == 1, (n_k, n_g)
+        assert '/auth-callback#access_token=' in back_url, back_url
+        assert len(call) == 1 and call[0]['args']['provider'] == 'kakao' and call[0]['args']['redirect_to'].endswith('/auth-callback'), call
+        assert name == '카카오닉네임', name
+        return f'버튼 카카오·구글 표시 → 인증 요청 provider={call[0]["args"]["provider"]} → 로그인 후 약관 동의 화면, 이름칸 "{name}"'
+
+    @case('TC-U33', '소셜 로그인', '약관 동의 화면: 동의 체크 전에는 진행할 수 없고, 이름을 고쳐 동의하면 이름·동의 시각이 저장되고 스튜디오 참여 화면으로 간다', '체크 전 버튼 비활성 → 이름 "김카카오"로 수정·동의 → users.name 수정 + 계정 정보에 terms_agreed_at → 스튜디오 만들기/참여 화면')
+    def _():
+        btn = pg.get_by_label('동의하고 시작하기')
+        dis = btn.get_attribute('aria-disabled')
+        pg.locator('input[placeholder="홍길동"]').fill('김카카오')
+        pg.get_by_label('이용약관과 개인정보 처리방침에 동의').click()
+        shot('TC-U33a')
+        btn.click()
+        pg.get_by_text('초대 코드', exact=False).first.wait_for(timeout=20000)
+        pg.wait_for_timeout(500)
+        shot('TC-U33')
+        log = json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read())
+        upd = [x for x in log if x['fn'] == 'users_update']
+        meta = [x for x in log if x['fn'] == 'update_user' and x['args'].get('data')]
+        assert dis == 'true', dis
+        assert upd and upd[-1]['args'] == {'id': 'k1', 'name': '김카카오'}, upd
+        assert meta and meta[-1]['args']['data'].get('terms_agreed_at') and meta[-1]['args']['data']['name'] == '김카카오', meta
+        return f'체크 전 비활성 → 이름 "김카카오" 저장, 동의 시각 {meta[-1]["args"]["data"]["terms_agreed_at"][:19]} 기록 → 스튜디오 참여 화면'
 
     @case('TC-U10', '공통', '테스트 내내 브라우저 기본 팝업(confirm/alert)과 화면 오류가 없다', '브라우저 기본 팝업 0건, 페이지 오류 0건')
     def _():

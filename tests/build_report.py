@@ -40,7 +40,7 @@ rows_db = ''.join(
     f'<tr><td class="id">{e(r["id"])}</td><td>{e(r["area"])}</td><td>{e(r["title"])}</td><td>{e(r["expected"])}</td>'
     f'<td>{e(r["actual"])}</td><td>{badge(r["pass"], r.get("status"))}</td></tr>' for r in db)
 
-extra_shots = {'TC-U28': ['TC-U28a.png', 'TC-U28.png'], 'TC-U29': ['TC-U29a.png', 'TC-U29.png'], 'TC-U24': ['TC-U24a.png', 'TC-U24.png'], 'TC-U25': ['TC-U25a.png', 'TC-U25b.png', 'TC-U25c.png', 'TC-U25.png'], 'TC-U27': ['TC-U27a.png', 'TC-U27b.png', 'TC-U27.png'], 'TC-U22': ['TC-U22a.png', 'TC-U22.png', 'TC-U22b.png'], 'TC-U19': ['TC-U19a.png', 'TC-U19.png'], 'TC-U15': ['TC-U15a.png', 'TC-U15b.png', 'TC-U15.png'], 'TC-U17': ['TC-U17a.png'], 'TC-U12': ['TC-U12a.png', 'TC-U12.png'], 'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
+extra_shots = {'TC-U32': ['TC-U32a.png', 'TC-U32.png'], 'TC-U33': ['TC-U33a.png', 'TC-U33.png'], 'TC-U28': ['TC-U28a.png', 'TC-U28.png'], 'TC-U29': ['TC-U29a.png', 'TC-U29.png'], 'TC-U24': ['TC-U24a.png', 'TC-U24.png'], 'TC-U25': ['TC-U25a.png', 'TC-U25b.png', 'TC-U25c.png', 'TC-U25.png'], 'TC-U27': ['TC-U27a.png', 'TC-U27b.png', 'TC-U27.png'], 'TC-U22': ['TC-U22a.png', 'TC-U22.png', 'TC-U22b.png'], 'TC-U19': ['TC-U19a.png', 'TC-U19.png'], 'TC-U15': ['TC-U15a.png', 'TC-U15b.png', 'TC-U15.png'], 'TC-U17': ['TC-U17a.png'], 'TC-U12': ['TC-U12a.png', 'TC-U12.png'], 'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
 cards_ui = ''
 for r in ui:
     shots = extra_shots.get(r['id'], [r['shot']])
@@ -116,6 +116,8 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 
 <h2>1. 이번 변경 사항</h2>
 <table><tr><th>구분</th><th>내용</th><th>관련 테스트</th></tr>
+<tr><td>신규 기능</td><td><b>간편 로그인 (카카오·애플·구글)</b>: 로그인 화면 버튼(애플은 iPhone 개발 빌드·배포 앱에서만 기본 애플 버튼). 카카오·구글은 앱 안 브라우저로 로그인 후 앱으로 복귀, 애플은 기기 로그인 창 → 토큰으로 로그인. 처음 들어온 사람과 약관 이전 가입자는 <b>이름 확인 + 약관 동의</b> 화면을 거치고 동의 시각을 계정 정보에 기록. 각 회사 앱 등록·Supabase 키 입력은 <code>docs/social-login-setup.md</code></td><td class="id">TC-U32·U33, TC-R10</td></tr>
+<tr><td>운영 설정</td><td><b>Supabase 대시보드 점검·적용(2026-11-18)</b>: Redirect URLs 에 <code>piq://**</code>·<code>exp://**</code> 추가, 탈퇴 함수 Verify JWT 끔. 확인 결과 커스텀 SMTP 없음(기본 메일은 팀원에게만·시간당 2통), 요금제 FREE, Confirm email 꺼짐(SMTP 연결 후 켜야 함), 리전 싱가포르 → 처리방침에 국외 이전 항목 추가. EAS 환경 변수 0개 확인</td><td class="id">—</td></tr>
 <tr><td>출시 준비</td><td><b>보안 점검</b>: Supabase 기본 권한(새 표·함수 전부 공개)을 재현한 상태에서 RLS·비로그인 차단·직접 쓰기 권한·권한 상승 함수 설정·내부 함수 차단을 자동 점검 (<code>tests/db/audit.mjs</code>). 점검 중 탈퇴 트리거 함수의 실행 권한을 막는 보완 1건(F-06)</td><td class="id">TC-S01~S07</td></tr>
 <tr><td>출시 준비</td><td><b>배포 설정</b>: <code>eas.json</code>(개발 빌드·내부 테스트 APK·스토어 배포, 빌드 번호 자동 증가), expo-dev-client, 암호화 수출 답변, 배포 빌드에 Supabase 값이 빠져도 앱이 꺼지지 않고 안내. 점검 스크립트 <code>scripts/check-release.mjs</code>, 대시보드 설정 목록 <code>docs/production-checklist.md</code></td><td class="id">TC-R01~R09</td></tr>
 <tr><td>신규 기능</td><td><b>비밀번호 찾기</b>: 로그인 화면 링크 → 재설정 메일 → 메일의 링크로 앱이 열리면 새 비밀번호 두 번 입력. 앱의 로그인 상태는 건드리지 않고(임시 세션) 변경 후 새 비밀번호로 로그인. 만료 링크 안내, 가입 여부 비노출. 가입 인증 메일도 앱으로 돌아오게(emailRedirectTo), "이메일 인증 전" 로그인 오류 한국어 안내</td><td class="id">TC-U28~U31</td></tr>
