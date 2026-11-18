@@ -5,6 +5,7 @@ import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 
 import { BRAND, EmptyView, ErrorView, LoadingView, Screen } from '@/components/ui';
 import { useMarkNotificationsRead, useNotifications, type AppNotification } from '@/hooks/queries';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { dayjs } from '@/lib/date';
 import { PUSH_STATUS_TEXT, usePushStore } from '@/lib/push';
 
@@ -21,6 +22,7 @@ const KIND_ICON: Record<string, { name: keyof typeof Ionicons.glyphMap; color: s
 export default function NotificationsScreen() {
   const router = useRouter();
   const query = useNotifications();
+  const pull = usePullRefresh(query.refetch);
   const markRead = useMarkNotificationsRead();
   const pushStatus = usePushStore((s) => s.status);
   const marked = useRef(false);
@@ -51,7 +53,7 @@ export default function NotificationsScreen() {
       ) : (
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
-          refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={BRAND} />}>
+          refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={BRAND} />}>
           {pushStatus !== 'registered' && pushStatus !== 'idle' ? (
             <View className="mb-3 flex-row items-start rounded-2xl bg-stone-100 px-4 py-3">
               <Ionicons name="phone-portrait-outline" size={16} color="#78716C" style={{ marginTop: 2 }} />

@@ -5,6 +5,7 @@ import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { BRAND, EmptyView, ErrorView, LoadingView, Screen } from '@/components/ui';
 import { usePassProducts } from '@/hooks/queries';
 import { useStudio } from '@/hooks/useStudio';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { formatWon } from '@/lib/labels';
 import { durationLabel, type PassProduct } from '@/lib/products';
 
@@ -13,6 +14,7 @@ export default function PassProductsScreen() {
   const router = useRouter();
   const { studioId, studio, isAdmin } = useStudio();
   const query = usePassProducts(studioId, isAdmin);
+  const pull = usePullRefresh(query.refetch);
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/profile'));
   const open = (id?: string) => router.push(id ? { pathname: '/(admin)/products/edit', params: { id } } : '/(admin)/products/edit');
 
@@ -26,7 +28,7 @@ export default function PassProductsScreen() {
     return (
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={BRAND} />}>
+        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={BRAND} />}>
         <Text className="mt-1 text-sm leading-5 text-stone-500">
           여기 등록한 상품은 수강권 발급 화면 맨 위에 나타나고, 고르면 유형·횟수·기간·금액이 자동으로 채워집니다. 이미 발급한 수강권에는
           영향이 없습니다.

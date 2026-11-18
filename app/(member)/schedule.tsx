@@ -7,6 +7,7 @@ import { BRAND, EmptyView, ErrorView, LoadingView, Screen } from '@/components/u
 import { useWeekClasses } from '@/hooks/queries';
 import { useStudio } from '@/hooks/useStudio';
 import { useBookingActions } from '@/hooks/useBookingActions';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { dayjs, formatDay, startOfWeek, weekDays } from '@/lib/date';
 import type { ClassOverview, ClassType } from '@/lib/types';
 
@@ -25,6 +26,7 @@ export default function MemberScheduleScreen() {
 
   const { studioId } = useStudio();
   const classesQuery = useWeekClasses(studioId, weekStart);
+  const pull = usePullRefresh(classesQuery.refetch);
   const { requestBook, requestCancel, isBusy } = useBookingActions();
 
   const days = useMemo(() => weekDays(weekStart), [weekStart]);
@@ -164,8 +166,8 @@ export default function MemberScheduleScreen() {
           }
           refreshControl={
             <RefreshControl
-              refreshing={classesQuery.isRefetching}
-              onRefresh={() => void classesQuery.refetch()}
+              refreshing={pull.refreshing}
+              onRefresh={pull.onRefresh}
               tintColor={BRAND}
             />
           }

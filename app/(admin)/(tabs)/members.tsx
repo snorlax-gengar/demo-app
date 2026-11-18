@@ -6,6 +6,7 @@ import { FlatList, Pressable, RefreshControl, ScrollView, Text, TextInput, View 
 import { BRAND, EmptyView, ErrorView, LoadingView, Screen } from '@/components/ui';
 import { useMembers } from '@/hooks/queries';
 import { useStudio } from '@/hooks/useStudio';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { ROLE_LABEL } from '@/lib/labels';
 import { EXPIRING_DAYS, LOW_REMAINING, dDayLabel, summarizePasses, type PassSummary } from '@/lib/passes';
 import type { ClassType, MemberWithPasses } from '@/lib/types';
@@ -39,6 +40,7 @@ export default function MembersScreen() {
   const router = useRouter();
   const { studioId } = useStudio();
   const membersQuery = useMembers(studioId);
+  const pull = usePullRefresh(membersQuery.refetch);
   const [keyword, setKeyword] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -136,7 +138,7 @@ export default function MembersScreen() {
             </View>
           }
           refreshControl={
-            <RefreshControl refreshing={membersQuery.isRefetching} onRefresh={() => void membersQuery.refetch()} tintColor={BRAND} />
+            <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={BRAND} />
           }
           renderItem={({ item }) => (
             <MemberRow

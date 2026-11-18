@@ -8,6 +8,7 @@ import { classTiming, StaffClassCard, type AttendanceTarget } from '@/components
 import { BRAND, EmptyView, ErrorView, LoadingView, Screen } from '@/components/ui';
 import { useMarkAttendance, useTimeline } from '@/hooks/queries';
 import { useStudio } from '@/hooks/useStudio';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { dayjs, formatDay, formatTime } from '@/lib/date';
 import type { TimelineBooking, TimelineClass } from '@/lib/types';
 import { useAdminViewStore } from '@/stores/adminView';
@@ -28,6 +29,7 @@ export default function StaffTimelineScreen() {
   // [강사 뷰 고정] 강사는 항상 본인 수업만. 원장만 토글로 전체 강사를 볼 수 있다.
   const viewingAll = isAdmin && showAll;
   const timelineQuery = useTimeline(studioId, day, viewingAll ? null : (profile?.id ?? null));
+  const pull = usePullRefresh(timelineQuery.refetch);
   const markAttendance = useMarkAttendance();
 
   const classes = timelineQuery.data ?? [];
@@ -57,8 +59,8 @@ export default function StaffTimelineScreen() {
         contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={
           <RefreshControl
-            refreshing={timelineQuery.isRefetching}
-            onRefresh={() => void timelineQuery.refetch()}
+            refreshing={pull.refreshing}
+            onRefresh={pull.onRefresh}
             tintColor={BRAND}
           />
         }>

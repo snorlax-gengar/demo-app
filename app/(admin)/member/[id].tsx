@@ -7,6 +7,7 @@ import { PassCard } from '@/components/PassCard';
 import { Badge, BRAND, EmptyView, ErrorView, LoadingView, Screen, SectionTitle } from '@/components/ui';
 import { useCancelBooking, useMemberDetail, useSetMemberRole, useUpdateMemberMemo } from '@/hooks/queries';
 import { useStudio } from '@/hooks/useStudio';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { dayjs, formatDate, formatDay, formatTimeRange } from '@/lib/date';
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_TONE, ROLE_LABEL, classTypeLabel } from '@/lib/labels';
 import { isPassUsable } from '@/lib/passes';
@@ -21,6 +22,7 @@ export default function MemberDetailScreen() {
   const { studioId, isAdmin, isOwner } = useStudio();
   const myId = useAuthStore((s) => s.profile?.id);
   const detailQuery = useMemberDetail(studioId, id);
+  const pull = usePullRefresh(detailQuery.refetch);
   const cancelBooking = useCancelBooking();
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/members'));
@@ -105,8 +107,8 @@ export default function MemberDetailScreen() {
           keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
-              refreshing={detailQuery.isRefetching}
-              onRefresh={() => void detailQuery.refetch()}
+              refreshing={pull.refreshing}
+              onRefresh={pull.onRefresh}
               tintColor={BRAND}
             />
           }>

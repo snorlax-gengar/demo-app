@@ -6,6 +6,7 @@ import { Pressable, RefreshControl, ScrollView, Text, View, type ScrollViewInsta
 import { BRAND, Badge, EmptyView, ErrorView, LoadingView, Screen } from '@/components/ui';
 import { useClassRange } from '@/hooks/queries';
 import { useStudio } from '@/hooks/useStudio';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { dayjs, formatDay, formatTime, formatTimeRange, startOfWeek, weekDays, type Dayjs } from '@/lib/date';
 import { classTypeLabel } from '@/lib/labels';
 import type { ClassOverview } from '@/lib/types';
@@ -41,6 +42,7 @@ export default function CalendarScreen() {
   const rangeFrom = mode === 'month' ? gridStart : weekStart;
   const rangeTo = rangeFrom.add(mode === 'month' ? 42 : 7, 'day');
   const classesQuery = useClassRange(studioId, rangeFrom, rangeTo, instructorId);
+  const pull = usePullRefresh(classesQuery.refetch);
 
   const byDay = useMemo(() => {
     const map: Record<string, ClassOverview[]> = {};
@@ -141,7 +143,7 @@ export default function CalendarScreen() {
         <ScrollView
           contentContainerStyle={{ paddingBottom: 96 }}
           refreshControl={
-            <RefreshControl refreshing={classesQuery.isRefetching} onRefresh={() => void classesQuery.refetch()} tintColor={BRAND} />
+            <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={BRAND} />
           }>
           <MonthGrid gridStart={gridStart} month={month} selected={selected} byDay={byDay} onSelect={selectDay} />
 
@@ -181,8 +183,8 @@ export default function CalendarScreen() {
           showInstructor={viewingAll}
           onPressClass={openClass}
           onPressHour={(hour) => createAt(selected, hour)}
-          refreshing={classesQuery.isRefetching}
-          onRefresh={() => void classesQuery.refetch()}
+          refreshing={pull.refreshing}
+          onRefresh={pull.onRefresh}
         />
       )}
 

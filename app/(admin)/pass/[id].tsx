@@ -7,6 +7,7 @@ import { PassCard } from '@/components/PassCard';
 import { BRAND, ErrorView, LoadingView, Screen } from '@/components/ui';
 import { useAddPayment, useAdjustPass, useExtendPass, usePassDetail, useSetPassActive } from '@/hooks/queries';
 import { useStudio } from '@/hooks/useStudio';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { dayjs, formatDate } from '@/lib/date';
 import { showDialog } from '@/lib/dialog';
 import { PASS_LOG_LABEL, PAYMENT_METHOD_LABEL, formatWon } from '@/lib/labels';
@@ -22,6 +23,7 @@ export default function PassDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isAdmin, isOwner } = useStudio();
   const detailQuery = usePassDetail(id);
+  const pull = usePullRefresh(detailQuery.refetch);
   const extendPass = useExtendPass();
   const adjustPass = useAdjustPass();
   const setActive = useSetPassActive();
@@ -102,7 +104,7 @@ export default function PassDetailScreen() {
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
-          refreshControl={<RefreshControl refreshing={detailQuery.isRefetching} onRefresh={() => void detailQuery.refetch()} tintColor={BRAND} />}>
+          refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={BRAND} />}>
           <View className="mt-1">
             <PassCard pass={data.pass} />
           </View>

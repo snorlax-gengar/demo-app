@@ -6,6 +6,7 @@ import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { BRAND, EmptyView, ErrorView, LoadingView, Screen } from '@/components/ui';
 import { useRevenue } from '@/hooks/queries';
 import { useStudio } from '@/hooks/useStudio';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { dayjs } from '@/lib/date';
 import { PAYMENT_METHOD_LABEL, formatWon } from '@/lib/labels';
 import { shortWon, summarizeRevenue } from '@/lib/revenue';
@@ -19,6 +20,7 @@ export default function RevenueScreen() {
   const { studioId, studio, isOwner } = useStudio();
   const [month, setMonth] = useState(() => dayjs().startOf('month'));
   const query = useRevenue(studioId, month, isOwner);
+  const pull = usePullRefresh(query.refetch);
   const isCurrentMonth = month.isSame(dayjs(), 'month');
 
   const summary = useMemo(
@@ -60,7 +62,7 @@ export default function RevenueScreen() {
     return (
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={BRAND} />}>
+        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={BRAND} />}>
         {/* 합계 */}
         <View className="mt-2 rounded-3xl bg-brand-700 p-5">
           <Text className="text-sm font-semibold text-brand-100">{month.format('YYYY년 M월')} 결제 합계</Text>

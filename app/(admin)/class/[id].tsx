@@ -8,6 +8,7 @@ import { useCancelClass, useClassDetail, useMarkAttendance, useUpdateCapacity } 
 import { dayjs, formatDay, formatTimeRange } from '@/lib/date';
 import type { TimelineBooking } from '@/lib/types';
 import { useStudio } from '@/hooks/useStudio';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useAuthStore } from '@/stores/auth';
 import { showDialog } from '@/lib/dialog';
 
@@ -20,6 +21,7 @@ export default function ClassDetailScreen() {
   const profile = useAuthStore((s) => s.profile);
   const { isAdmin } = useStudio();
   const detailQuery = useClassDetail(id);
+  const pull = usePullRefresh(detailQuery.refetch);
   const markAttendance = useMarkAttendance();
   const updateCapacity = useUpdateCapacity();
   const cancelClass = useCancelClass();
@@ -88,7 +90,7 @@ export default function ClassDetailScreen() {
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
         refreshControl={
-          <RefreshControl refreshing={detailQuery.isRefetching} onRefresh={() => void detailQuery.refetch()} tintColor={BRAND} />
+          <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={BRAND} />
         }>
         <Text className="mt-2 text-sm font-semibold text-brand-600">{formatDay(cls.starts_at)}</Text>
         <Text className="mt-0.5 text-2xl font-bold text-ink">{formatTimeRange(cls.starts_at, cls.ends_at)}</Text>

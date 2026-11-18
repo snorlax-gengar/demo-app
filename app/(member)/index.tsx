@@ -9,6 +9,7 @@ import { BRAND, EmptyView, ErrorView, LoadingView, Screen, SectionTitle } from '
 import { useMyUpcomingClasses, usePasses } from '@/hooks/queries';
 import { useStudio } from '@/hooks/useStudio';
 import { useBookingActions } from '@/hooks/useBookingActions';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { dayjs, formatDay } from '@/lib/date';
 import { isPassUsable } from '@/lib/passes';
 import { useAuthStore } from '@/stores/auth';
@@ -22,6 +23,7 @@ export default function MemberHomeScreen() {
   const { studioId, studio } = useStudio();
   const passesQuery = usePasses(studioId, profile?.id);
   const upcomingQuery = useMyUpcomingClasses(studioId);
+  const pull = usePullRefresh(passesQuery.refetch, upcomingQuery.refetch);
   const { requestBook, requestCancel, isBusy } = useBookingActions();
 
   // 쓸 수 있는 수강권을 앞에, 만료/소진된 수강권은 최근 30일 것만 뒤에 흐리게
@@ -35,17 +37,12 @@ export default function MemberHomeScreen() {
   }, [passesQuery.data]);
 
   const upcoming = upcomingQuery.data ?? [];
-  const refreshing = passesQuery.isRefetching || upcomingQuery.isRefetching;
-  const onRefresh = () => {
-    void passesQuery.refetch();
-    void upcomingQuery.refetch();
-  };
 
   return (
     <Screen>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND} />}>
+        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={BRAND} />}>
         <View className="flex-row items-start px-5 pt-4">
           <View className="flex-1">
             <Text className="text-sm text-stone-500">
