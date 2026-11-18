@@ -1,6 +1,7 @@
 """화면 테스트 케이스 (가짜 Supabase 서버 + 실제 앱 웹 빌드). usage: python3 ui_cases.py <shot_dir> <out.json>"""
 import json
 import os
+import re
 import sys
 import time
 import urllib.request
@@ -141,7 +142,7 @@ with sync_playwright() as p:
         assert '자동' in t and '이도윤' not in t, t
         return t.replace('\n', ' / ')
 
-    @case('TC-U08', '회원 메모', '메모를 편집해도 화면이 밀리지 않고 입력칸에 바로 입력할 수 있다', '편집 전후 화면 위치 변화 0px, 입력칸 포커스')
+    @case('TC-U08', '회원 메모', '메모를 편집해도 화면이 밀리지 않고 입력칸에 바로 입력할 수 있다', '편집 전후 화면 위치 변화 0px, 입력칸 포커스, 기존 메모 뒤에 이어 쓰기')
     def _():
         pg.goto(BASE + '/member/m1')
         pg.get_by_text('허리 디스크', exact=False).first.wait_for(timeout=15000)
@@ -161,9 +162,11 @@ with sync_playwright() as p:
         assert abs(top_after - top_before) < 1, f'회원 이름 위치 {top_before}→{top_after}'
         assert abs(memo_after - memo_before) < 4, f'메모 칸 위치 {memo_before}→{memo_after}'
         pg.keyboard.type(' / 테스트')
+        typed = pg.locator('textarea').input_value()
+        assert typed.endswith(' / 테스트'), f'입력이 끝에 붙지 않음: "{typed}"'
         pg.get_by_text('저장', exact=True).click()
         pg.wait_for_timeout(600)
-        return f'문서 스크롤 {y_before}→{y_after}px, 이름 위치 {top_before:.0f}→{top_after:.0f}px, 메모 칸 {memo_before:.0f}→{memo_after:.0f}px, 포커스 {focused}'
+        return f'입력 결과 "{typed}", 문서 스크롤 {y_before}→{y_after}px, 이름 위치 {top_before:.0f}→{top_after:.0f}px, 메모 칸 {memo_before:.0f}→{memo_after:.0f}px, 포커스 {focused}'
 
     @case('TC-U09', '로그아웃', '로그아웃은 앱 안 확인창으로 묻고, "닫기"는 유지·"로그아웃"은 로그인 화면으로', '앱 안 확인창, 닫기 후 유지, 로그아웃 후 로그인 화면')
     def _():
@@ -184,6 +187,42 @@ with sync_playwright() as p:
         pg.wait_for_timeout(400)
         shot('TC-U09')
         return f'닫기 → 내 정보 유지, 로그아웃 → 로그인 화면({pg.url.replace(BASE, "") or "/"})'
+
+    def cancel_buttons():
+        """회원 상세 '다가오는 예약'의 취소 버튼들 → 같은 줄에 있는 수업 제목 목록"""
+        btns = pg.locator('div[tabindex="0"]').filter(has_text=re.compile(r'^취소$'))
+        out = []
+        for i in range(btns.count()):
+            y = btns.nth(i).bounding_box()['y']
+            for t in ['박서연 강사 그룹', '이도윤 원장 그룹']:
+                if abs(pg.get_by_text(t, exact=False).first.bounding_box()['y'] - y) < 40:
+                    out.append(t)
+        return out
+
+    @case('TC-U11', '강사 권한', '회원 상세에서 강사는 본인 수업 예약에만 "취소" 버튼이 보이고, 원장은 모든 수업에 보인다', '원장: 2건 모두 / 강사(박서연): 본인 수업 1건만')
+    def _():
+        login('owner@x.com')
+        pg.wait_for_selector('text=전체 강사 보기', timeout=30000)
+        pg.goto(BASE + '/member/m1')
+        pg.get_by_text('박서연 강사 그룹', exact=False).first.wait_for(timeout=15000)
+        pg.get_by_text('다가오는 예약').first.evaluate('e => e.scrollIntoView({block: "start"})')
+        pg.wait_for_timeout(400)
+        shot('TC-U11a')
+        owner = cancel_buttons()
+        assert sorted(owner) == ['박서연 강사 그룹', '이도윤 원장 그룹'], f'원장 {owner}'
+        pg.goto(BASE + '/profile')
+        pg.get_by_text('로그아웃', exact=True).last.click()
+        pg.get_by_role('button', name='로그아웃').last.click()
+        login('teacher@x.com')
+        pg.wait_for_selector('text=오늘의 내 수업', timeout=30000)
+        pg.goto(BASE + '/member/m1')
+        pg.get_by_text('박서연 강사 그룹', exact=False).first.wait_for(timeout=15000)
+        pg.get_by_text('다가오는 예약').first.evaluate('e => e.scrollIntoView({block: "start"})')
+        pg.wait_for_timeout(400)
+        shot('TC-U11')
+        teacher = cancel_buttons()
+        assert teacher == ['박서연 강사 그룹'], f'강사 {teacher}'
+        return f'원장: {", ".join(owner)} / 강사: {", ".join(teacher)}'
 
     @case('TC-U10', '공통', '테스트 내내 브라우저 기본 팝업(confirm/alert)과 화면 오류가 없다', '브라우저 기본 팝업 0건, 페이지 오류 0건')
     def _():

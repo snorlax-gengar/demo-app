@@ -155,7 +155,15 @@ http.createServer(async (req, res) => {
       if (q.id) return out(timeline.filter((c) => c.id === eq(q.id)));
       return out(timeline.filter((c) => c.studio_id === eq(q.studio_id) && (!q.instructor_id || c.instructor_id === eq(q.instructor_id))));
     }
-    if (table === 'bookings') return out([]);
+    if (table === 'bookings') {
+      // 회원 상세: 김하늘(m1)의 다가오는 예약 2건 — 박서연(t1) 수업 1건, 이도윤(a1) 수업 1건
+      if (eq(q.member_id) !== 'm1') return out([]);
+      const cls = (id, title, day, hour, instr) => ({ id, title, starts_at: at(day, hour), ends_at: at(day, hour, 50), max_capacity: 4, class_type: 'group', instructor_id: instr[0], instructor: { name: instr[1] } });
+      return out([
+        { id: 'mb1', status: 'confirmed', pass_id: 'p2', pass_refunded: false, promoted_at: null, cancelled_at: null, created_at: '2026-11-17T01:00:00Z', class: cls('k1', '박서연 강사 그룹', 2, 19, ['t1', '박서연']) },
+        { id: 'mb2', status: 'confirmed', pass_id: 'p2', pass_refunded: false, promoted_at: null, cancelled_at: null, created_at: '2026-11-17T02:00:00Z', class: cls('k2', '이도윤 원장 그룹', 3, 20, ['a1', '이도윤']) },
+      ]);
+    }
     return out([]);
   }
   let file = path.join(DIST, p === '/' ? 'index.html' : p);

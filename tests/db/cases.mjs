@@ -272,6 +272,34 @@ await tc('TC-D25', '대신 예약', '다른 스튜디오 원장은 이 스튜디
   await rejects(book(P.ownerB, c.id, m1), /수업을 찾을 수 없습니다/);
 });
 
+// 6-2) 수업 단위 직원 권한 (패치 006)
+await tc('TC-D30', '강사 권한', '강사는 다른 강사 수업의 회원 예약을 취소할 수 없다', '"담당 강사 또는 원장·관리자만 이 수업의 예약을 취소" 오류, 예약·잔여 그대로', async () => {
+  const c = await mkClass(P.t2, 21 * 24 * 60, 4, '강사2 수업(취소 권한)');
+  const b = await book(m1, c.id);
+  const before = await rem(m1, 'group');
+  await rejects(cancel(P.t1, b.id), /담당 강사 또는 원장·관리자만 이 수업의 예약을 취소/);
+  assert.equal(await status(b.id), 'confirmed');
+  assert.equal(await rem(m1, 'group'), before);
+  return `거절됨, 예약 ${await status(b.id)}, 잔여 ${before}회 유지`;
+});
+await tc('TC-D31', '강사 권한', '강사는 본인 수업의 회원 예약은 취소할 수 있다', '취소 성공, 기본 복구', async () => {
+  const c = await mkClass(P.t1, 22 * 24 * 60, 4, '강사1 수업(취소 권한)');
+  const b = await book(m2, c.id);
+  const r = await cancel(P.t1, b.id);
+  assert.equal(r.status, 'cancelled'); assert.equal(r.pass_refunded, true);
+});
+await tc('TC-D32', '원장 권한', '원장·실장은 어느 강사 수업이든 회원 예약을 취소할 수 있다', '원장·실장 모두 취소 성공', async () => {
+  const c = await mkClass(P.t2, 23 * 24 * 60, 4, '강사2 수업(원장 관리)');
+  const b1 = await book(m3, c.id); const b2 = await book(m4, c.id);
+  assert.equal((await cancel(P.owner, b1.id)).status, 'cancelled');
+  assert.equal((await cancel(P.manager, b2.id, false)).status, 'cancelled');
+});
+await tc('TC-D33', '강사 권한', '강사는 다른 강사 수업에 회원을 대신 예약할 수 없다 (원장은 가능)', '강사 거절 / 원장 성공', async () => {
+  const c = await mkClass(P.t2, 24 * 24 * 60, 4, '강사2 수업(대신 예약 권한)');
+  await rejects(book(P.t1, c.id, m1), /담당 강사 또는 원장·관리자만 이 수업에 대신 예약/);
+  assert.equal((await book(P.owner, c.id, m1)).status, 'confirmed');
+});
+
 // 7) 출석 처리 시간
 await tc('TC-D26', '출석 시간', '출석은 시작 30분 전부터, 노쇼는 시작 후에만, 되돌리기는 언제나', '40분 전 출석 거절 / 20분 전 출석 OK·노쇼 거절 / 시작 후 노쇼 OK / 되돌리기 OK', async () => {
   const c = await mkClass(P.manager, 40, 4, '출석 시간');

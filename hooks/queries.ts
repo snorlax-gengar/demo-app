@@ -426,7 +426,7 @@ export function useMemberDetail(studioId: string, memberId: string | undefined) 
           .from('bookings')
           .select(
             `id, status, pass_id, pass_refunded, promoted_at, cancelled_at, created_at,
-             class:classes!bookings_class_id_fkey ( id, title, starts_at, ends_at, max_capacity, class_type,
+             class:classes!bookings_class_id_fkey ( id, title, starts_at, ends_at, max_capacity, class_type, instructor_id,
                instructor:users!classes_instructor_id_fkey ( name ) )`,
           )
           .eq('studio_id', studioId)

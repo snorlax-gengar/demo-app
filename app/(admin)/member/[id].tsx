@@ -207,13 +207,16 @@ export default function MemberDetailScreen() {
                   booking={booking}
                   first={index === 0}
                   action={
-                    <Pressable
-                      onPress={() => confirmCancel(booking)}
-                      disabled={cancelBooking.isPending}
-                      hitSlop={6}
-                      className="ml-2 rounded-full border border-stone-300 px-3 py-1.5 active:opacity-70">
-                      <Text className="text-xs font-semibold text-stone-600">취소</Text>
-                    </Pressable>
+                    // 원장·실장은 모든 수업, 강사는 본인 수업의 예약만 취소할 수 있다 (DB 도 같은 규칙)
+                    isAdmin || booking.class?.instructor_id === myId ? (
+                      <Pressable
+                        onPress={() => confirmCancel(booking)}
+                        disabled={cancelBooking.isPending}
+                        hitSlop={6}
+                        className="ml-2 rounded-full border border-stone-300 px-3 py-1.5 active:opacity-70">
+                        <Text className="text-xs font-semibold text-stone-600">취소</Text>
+                      </Pressable>
+                    ) : undefined
                   }
                 />
               ))}
@@ -304,9 +307,17 @@ function MemoEditor({ person, studioId, editable }: { person: StudioPerson; stud
   // 레이아웃이 밀리므로 preventScroll 로 포커스만 준다
   useEffect(() => {
     if (!editing) return;
-    const el = inputRef.current as unknown as { focus: (o?: { preventScroll?: boolean }) => void } | null;
-    if (Platform.OS === 'web') el?.focus({ preventScroll: true });
-    else el?.focus();
+    const el = inputRef.current as unknown as {
+      focus: (o?: { preventScroll?: boolean }) => void;
+      setSelectionRange?: (start: number, end: number) => void;
+      value?: string;
+    } | null;
+    if (Platform.OS === 'web') {
+      el?.focus({ preventScroll: true });
+      // 기존 메모 뒤에 이어 쓰도록 커서를 끝으로 (웹은 기본이 맨 앞)
+      const end = el?.value?.length ?? 0;
+      el?.setSelectionRange?.(end, end);
+    } else el?.focus();
   }, [editing]);
 
   if (!editing) {

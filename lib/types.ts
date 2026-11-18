@@ -125,6 +125,7 @@ export interface MemberBooking {
     ends_at: string;
     max_capacity: number;
     class_type: ClassType;
+    instructor_id: string;
     instructor: { name: string } | null;
   } | null;
 }

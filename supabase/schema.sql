@@ -355,6 +355,15 @@ create trigger classes_guard_update
 -- 4. 내부 함수 (클라이언트에서 직접 호출 불가 — 맨 아래에서 EXECUTE 회수)
 -- -----------------------------------------------------------------------------
 
+-- 4-0. 이 수업을 관리할 수 있는가: 원장·실장은 모든 수업, 강사는 본인 담당 수업만
+create or replace function public._can_manage_class(p_class public.classes)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(public.studio_role(p_class.studio_id), '') in ('owner', 'manager')
+      or (public.studio_role(p_class.studio_id) = 'instructor' and p_class.instructor_id = auth.uid());
+$$;
+
 -- 4-1. 수강권 횟수 증감 + 로그. 횟수가 바뀌는 유일한 통로.
 create or replace function public._apply_pass_delta(
   p_pass_id    uuid,
@@ -686,7 +695,11 @@ begin
   if not found or not public.is_studio_member(v_class.studio_id) then
     raise exception '수업을 찾을 수 없습니다.';
   end if;
-  if v_member <> v_uid and not public.is_studio_staff(v_class.studio_id) then
+  -- 대신 예약: 원장·실장은 모든 수업, 강사는 본인 수업만
+  if v_member <> v_uid and not public._can_manage_class(v_class) then
+    if public.is_studio_staff(v_class.studio_id) then
+      raise exception '담당 강사 또는 원장·관리자만 이 수업에 대신 예약할 수 있습니다.';
+    end if;
     raise exception '다른 회원의 예약을 생성할 권한이 없습니다.';
   end if;
   if not exists (
@@ -765,9 +778,13 @@ begin
   -- 잠금 순서는 항상 classes → bookings (book_class 와 동일) : 교착 방지
   select * into v_class   from public.classes  where id = v_class_id   for update;
   select * into v_booking from public.bookings where id = p_booking_id for update;
-  v_staff := public.is_studio_staff(v_class.studio_id);
+  -- 직원 권한: 원장·실장은 모든 수업, 강사는 본인 수업의 예약만 관리
+  v_staff := public._can_manage_class(v_class);
 
   if v_booking.member_id <> v_uid and not v_staff then
+    if public.is_studio_staff(v_class.studio_id) then
+      raise exception '담당 강사 또는 원장·관리자만 이 수업의 예약을 취소할 수 있습니다.';
+    end if;
     raise exception '본인의 예약만 취소할 수 있습니다.';
   end if;
   if v_booking.status not in ('confirmed', 'waitlist') then
@@ -1198,6 +1215,7 @@ revoke execute on function public._promote_waitlist(uuid)                       
 revoke execute on function public._new_invite_code()                                    from public, anon, authenticated;
 revoke execute on function public.handle_new_user()                                     from public, anon, authenticated;
 revoke execute on function public.log_pass_issued()                                     from public, anon, authenticated;
+revoke execute on function public._can_manage_class(public.classes)                    from public, anon, authenticated;
 revoke execute on function public.validate_class()                                      from public, anon, authenticated;
 revoke execute on function public.guard_class_update()                                  from public, anon, authenticated;
 revoke execute on function public.trg_booking_cancelled_promote()                       from public, anon, authenticated;
