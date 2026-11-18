@@ -10,6 +10,7 @@ export interface UserProfile {
   phone: string | null;
   email: string | null;
   created_at: string;
+  withdrawn_at?: string | null;
 }
 
 export interface Studio {

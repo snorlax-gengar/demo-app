@@ -8,7 +8,7 @@ import sys
 D = os.path.dirname(os.path.abspath(__file__))
 OUT = sys.argv[1]
 load = lambda n: json.load(open(os.path.join(D, n)))  # noqa: E731
-db = load('r_new.json')['results'] + load('r_d29.json')['results'] + load('r_d36.json')['results'] + load('r_push.json')['results']
+db = load('r_new.json')['results'] + load('r_d29.json')['results'] + load('r_d36.json')['results'] + load('r_push.json')['results'] + load('r_withdraw.json')['results']
 db.sort(key=lambda r: r['id'])
 before = {r['id']: r for r in load('r_before.json')['results']}
 patched = {r['id']: r for r in load('r_p511.json')['results']}
@@ -38,7 +38,7 @@ rows_db = ''.join(
     f'<tr><td class="id">{e(r["id"])}</td><td>{e(r["area"])}</td><td>{e(r["title"])}</td><td>{e(r["expected"])}</td>'
     f'<td>{e(r["actual"])}</td><td>{badge(r["pass"])}</td></tr>' for r in db)
 
-extra_shots = {'TC-U22': ['TC-U22a.png', 'TC-U22.png', 'TC-U22b.png'], 'TC-U19': ['TC-U19a.png', 'TC-U19.png'], 'TC-U15': ['TC-U15a.png', 'TC-U15b.png', 'TC-U15.png'], 'TC-U17': ['TC-U17a.png'], 'TC-U12': ['TC-U12a.png', 'TC-U12.png'], 'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
+extra_shots = {'TC-U24': ['TC-U24a.png', 'TC-U24.png'], 'TC-U25': ['TC-U25a.png', 'TC-U25b.png', 'TC-U25c.png', 'TC-U25.png'], 'TC-U27': ['TC-U27a.png', 'TC-U27b.png', 'TC-U27.png'], 'TC-U22': ['TC-U22a.png', 'TC-U22.png', 'TC-U22b.png'], 'TC-U19': ['TC-U19a.png', 'TC-U19.png'], 'TC-U15': ['TC-U15a.png', 'TC-U15b.png', 'TC-U15.png'], 'TC-U17': ['TC-U17a.png'], 'TC-U12': ['TC-U12a.png', 'TC-U12.png'], 'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
 cards_ui = ''
 for r in ui:
     shots = extra_shots.get(r['id'], [r['shot']])
@@ -51,7 +51,7 @@ cmp_rows = ''
 for cid in ['TC-D09', 'TC-D30', 'TC-D33', 'TC-D35', 'TC-D37', 'TC-D40', 'TC-D42']:
     b, a, p = before[cid], next(r for r in db if r['id'] == cid), patched[cid]
     cmp_rows += (f'<tr><td class="id">{cid}</td><td>수정 전 (GitHub 64e7e1b schema)</td><td>{e(b["actual"])}</td><td>{badge(b["pass"])}</td></tr>'
-                 f'<tr><td class="id">{cid}</td><td>수정 전 + 패치 005~011 (운영 DB 상태)</td><td>{e(p["actual"])}</td><td>{badge(p["pass"])}</td></tr>'
+                 f'<tr><td class="id">{cid}</td><td>수정 전 + 패치 005~012 (운영 DB 상태)</td><td>{e(p["actual"])}</td><td>{badge(p["pass"])}</td></tr>'
                  f'<tr><td class="id">{cid}</td><td>수정 후 schema.sql (새로 설치)</td><td>{e(a["actual"])}</td><td>{badge(a["pass"])}</td></tr>')
 before_total = f'{sum(r["pass"] for r in before.values())}/{len(before)}'
 patched_total = f'{sum(r["pass"] for r in patched.values())}/{len(patched)}'
@@ -102,7 +102,7 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 <div class="sub">대상: snorlax-gengar/demo-app (main 64e7e1b 이후 변경분) · 작성: Claude</div>
 <div class="kpis">
 <div class="kpi"><b>{total_pass}/{total}</b><span>자동 테스트 통과</span></div>
-<div class="kpi"><b>{db_pass}/{len(db)}</b><span>DB 규칙·푸시 발송 로직</span></div>
+<div class="kpi"><b>{db_pass}/{len(db)}</b><span>DB 규칙·푸시 발송·탈퇴 로직</span></div>
 <div class="kpi"><b>{ui_pass}/{len(ui)}</b><span>화면 (앱 웹 빌드)</span></div>
 <div class="kpi"><b>{manual_ok}/{len(manual)}</b><span>직접 확인 (실제 계정·DB)</span></div></div>
 
@@ -114,6 +114,9 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 
 <h2>1. 이번 변경 사항</h2>
 <table><tr><th>구분</th><th>내용</th><th>관련 테스트</th></tr>
+<tr><td>신규 기능</td><td><b>회원 탈퇴</b>: 내 정보 맨 아래 "회원 탈퇴" → 삭제·보존 항목 안내 + 확인 체크 → 최종 확인 → 탈퇴. 이름 "탈퇴 회원"·연락처·이메일·회원 메모·푸시 토큰·알림 삭제, 소속은 탈퇴 처리, 앞으로의 예약·대기는 취소(대기자 자동 확정). 지난 예약·출석·수강권·결제 기록은 익명으로 보존(매출 유지). 로그인 계정은 Edge Function <code>delete-account</code>가 소프트 삭제(행을 지우지 않아 기록 연쇄 삭제 없음, 같은 이메일로 재가입 가능). 다른 원장이 없는 스튜디오의 원장·진행 예정 수업 담당 강사는 먼저 정리하도록 막음. 패치 <code>012_withdraw_account.sql</code></td><td class="id">TC-D48~D50, TC-W01~W04, TC-U25·U26</td></tr>
+<tr><td>신규 기능</td><td><b>이용약관·개인정보 처리방침</b>: 앱 안 문서 화면(로그인 전에도 열림), 내 정보 하단 링크, 가입 시 필수 동의 체크(동의 시각·약관 버전을 계정 정보에 기록). 운영자 정보는 <code>lib/legal.ts</code> 의 [자리표시]로 두었음</td><td class="id">TC-U24, TC-U27</td></tr>
+<tr><td>출시 준비</td><td><b>앱 이름 PIQ</b>: 표시 이름·로그인 화면 로고·아이콘(안드로이드 적응형 포함)·스플래시·파비콘, 번들 ID <code>com.gengarileo.piq</code>(iOS·Android), 링크 스킴 <code>piq://</code>. EAS 프로젝트 연결이 끊기지 않도록 slug 는 유지</td><td class="id">—</td></tr>
 <tr><td>신규 기능</td><td><b>알림 (알림함 + 휴대폰 푸시)</b>: 대신 예약·대신 대기·대기 자동 확정·직원 취소·폐강·수업 전날 20:00 에 회원에게 알림이 쌓임(본인이 한 일은 제외). 회원 홈 종 아이콘(안 읽은 수)·내 정보 "알림" → 알림함, 열면 읽음 처리. 휴대폰은 로그인 시 푸시 토큰 등록·로그아웃 시 해제, 알림을 누르면 앱으로 이동. 발송은 Edge Function <code>send-push</code>(Expo Push, 중복 방지·죽은 토큰 정리)를 알림이 쌓일 때 DB 가 pg_net 으로 직접 호출(Database Webhooks 화면 불필요, 5분마다 재확인). 패치 <code>010_notifications.sql</code>·<code>011_push_hook.sql</code>, 설정 안내 <code>docs/push-setup.md</code></td><td class="id">TC-D42~D47, TC-P01~P04, TC-U22·U23</td></tr>
 <tr><td>신규 기능</td><td><b>발급 후 결제 추가</b>: 수강권 상세의 "결제 추가"로 나중에 받은 금액·분할 결제를 금액·수단·결제일(오늘까지, 1년 이내)·메모와 함께 기록 → 매출에 반영. 원장·실장이 추가 가능, 결제 목록은 원장만 보임. 패치 <code>009_add_pass_payment.sql</code></td><td class="id">TC-D40, TC-D41, TC-U19~U21</td></tr>
 <tr><td>신규 기능</td><td><b>수강권 상품(가격표)</b>: 원장·실장이 내 정보 → "수강권 상품 관리"에서 이름·유형·횟수·기간(개월/일)·가격을 등록·수정·숨김. 발급 화면 맨 위 "상품에서 고르기"로 고르면 유형·횟수·이름·기간·금액이 자동으로 채워짐(수정 가능). 발급 화면에 일 단위 기간 추가. 강사·회원은 상품을 볼 수 없음. 패치 <code>008_pass_products.sql</code></td><td class="id">TC-D37~D39, TC-U15~U18</td></tr>

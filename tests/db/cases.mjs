@@ -491,6 +491,64 @@ await tc('TC-D47', '알림', '알림이 쌓이면 send-push 함수를 호출하�
   return `설정 전 호출 ${before}번 / 폐강 알림 ${notes3}건 → 호출 ${calls.length}번, 헤더 x-push-secret 포함, 회원은 설정 조회 불가`;
 });
 
+// 14) 회원 탈퇴 (패치 012)
+const newUser = async (n, name) => {
+  await q(`insert into auth.users(id,email,raw_user_meta_data) values ($1,$2,$3)`, [U(n), `w${n}@t.dev`, JSON.stringify({ name, phone: '010-1234-5678' })]);
+  return U(n);
+};
+await tc('TC-D48', '회원 탈퇴', '탈퇴하면 개인정보는 지워지고 예약·출석·결제 기록은 "탈퇴 회원"으로 남는다', '이름 "탈퇴 회원"·연락처·이메일·메모·푸시 토큰·알림 삭제 / 지난 출석·결제 그대로 / 앞으로의 예약 취소 → 대기자 자동 확정 / 다시 불러도 안전', async () => {
+  const w = await newUser(21, '탈퇴예정');
+  await rpc(w, `select * from join_studio($1)`, [A.invite_code]);
+  const pass = await issue(w, 'group', 10);
+  await rpc(P.owner, `select * from add_pass_payment($1,99000,'card')`, [pass.id]);
+  await rpc(P.owner, `update studio_members set memo='허리 부상' where studio_id=$1 and user_id=$2`, [A.id, w]);
+  const past = await mkClass(P.t1, -3 * 24 * 60, 4, '지난 수업');
+  await q(`insert into bookings(studio_id,class_id,member_id,pass_id,status) values ($1,$2,$3,$4,'attended')`, [A.id, past.id, w, pass.id]);
+  const fut = await mkClass(P.t1, 50 * 24 * 60, 2, '탈퇴 전 예약');
+  const mine = await book(w, fut.id);
+  await book(m3, fut.id);
+  const wait = await book(m4, fut.id);
+  await rpc(P.owner, `select * from book_class($1,$2)`, [(await mkClass(P.t2, 51 * 24 * 60, 4, '알림용')).id, w]); // 알림 1건 생성
+  await rpc(w, `select register_push_token('ExponentPushToken[withdraw-1]','ios')`);
+  const notesBefore = (await q(`select count(*)::int c from notifications where user_id=$1`, [w]))[0].c;
+
+  const r = (await rpc(w, `select withdraw_account() r`))[0].r;
+  const u = (await q(`select name, phone, email, withdrawn_at from users where id=$1`, [w]))[0];
+  const sm = (await q(`select status, memo from studio_members where user_id=$1`, [w]))[0];
+  const kept = (await q(`select (select count(*)::int from bookings where member_id=$1 and status='attended') att,
+                                (select count(*)::int from pass_payments where member_id=$1) pay,
+                                (select count(*)::int from push_tokens where user_id=$1) tok,
+                                (select count(*)::int from notifications where user_id=$1) noti`, [w]))[0];
+  assert.equal(u.name, '탈퇴 회원'); assert.equal(u.phone, null); assert.equal(u.email, null); assert.ok(u.withdrawn_at);
+  assert.deepEqual(sm, { status: 'left', memo: null });
+  assert.equal(kept.att, 1); assert.equal(kept.pay, 1); assert.equal(kept.tok, 0); assert.equal(kept.noti, 0);
+  assert.equal(await status(mine.id), 'cancelled'); assert.equal(await status(wait.id), 'confirmed');
+  assert.equal(r.cancelled_bookings, 2);
+  const seenByOwner = (await rpc(P.owner, `select name from users where id=$1`, [w]))[0];
+  const again = (await rpc(w, `select withdraw_account() r`))[0].r;
+  assert.equal(again.already, true);
+  return `취소 ${r.cancelled_bookings}건(대기자 자동 확정), 원장 화면 이름 "${seenByOwner?.name}", 출석 ${kept.att}·결제 ${kept.pay}건 보존, 토큰 ${kept.tok}·알림 ${notesBefore}→${kept.noti}건, 두 번째 호출 already=${again.already}`;
+});
+await tc('TC-D49', '회원 탈퇴', '유일한 원장(다른 사람이 남은 스튜디오)·진행 예정 수업 담당 강사는 탈퇴할 수 없고, 비로그인은 호출할 수 없다', '원장 거절(스튜디오 이름 안내) / 강사 거절(수업 수 안내) / 거절 시 아무것도 바뀌지 않음 / anon 거절', async () => {
+  await mkClass(P.t1, 52 * 24 * 60, 4, '담당 수업');
+  await rejects(rpc(P.owner, `select withdraw_account()`), /다른 원장이 없는 스튜디오가 있어 탈퇴할 수 없어요 \(테스트 필라테스\)/);
+  await rejects(rpc(P.t1, `select withdraw_account()`), /담당 중인 진행 예정 수업이 \d+개/);
+  const still = (await q(`select name, withdrawn_at from users where id in ($1,$2) order by name`, [P.owner, P.t1]));
+  assert.ok(still.every((x) => x.withdrawn_at === null && x.name !== '탈퇴 회원'));
+  await db.exec(`set role anon`);
+  try { await rejects(q(`select withdraw_account()`), /permission denied/); } finally { await db.exec(`reset role`); }
+  const n = (await q(`select count(*)::int c from classes where instructor_id=$1 and status='scheduled' and ends_at>now()`, [P.t1]))[0].c;
+  return `원장·강사(${n}개 수업) 거절, 두 계정 정보 그대로, anon 권한 거절`;
+});
+await tc('TC-D50', '회원 탈퇴', '혼자인 스튜디오의 원장은 탈퇴할 수 있고, 탈퇴한 계정은 초대 코드로 다시 참여할 수 없다', '탈퇴 성공 / join_studio → "탈퇴한 계정입니다"', async () => {
+  const solo = await newUser(22, '1인원장');
+  const C = (await rpc(solo, `select * from create_studio('혼자 스튜디오')`))[0];
+  await rpc(solo, `select withdraw_account()`);
+  await rejects(rpc(solo, `select * from join_studio($1)`, [A.invite_code]), /탈퇴한 계정입니다/);
+  const left = (await q(`select status from studio_members where studio_id=$1 and user_id=$2`, [C.id, solo]))[0].status;
+  return `탈퇴 성공(소속 ${left}), 재참여 거절`;
+});
+
 // 8) 스튜디오 격리
 await tc('TC-D28', '스튜디오 격리', '다른 스튜디오 원장은 이 스튜디오의 예약·수강권·회원을 볼 수 없다', '조회 결과 0건', async () => {
   const r = await asRole(P.ownerB, async () => ({

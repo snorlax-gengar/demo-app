@@ -4,7 +4,7 @@
 
 ## DB 규칙 테스트 (`tests/db`)
 `supabase/schema.sql` 을 메모리 Postgres(PGlite)에 설치하고, 원장·실장·강사·회원 계정으로
-예약·취소·대기 승격·폐강·출석·권한(RLS)을 검증합니다. 케이스 ID: TC-D01 ~ TC-D47 (+ patch_existing.mjs TC-D29, patch007.mjs TC-D36).
+예약·취소·대기 승격·폐강·출석·권한(RLS)을 검증합니다. 케이스 ID: TC-D01 ~ TC-D50 (+ patch_existing.mjs TC-D29, patch007.mjs TC-D36).
 
 ```bash
 cd tests/db
@@ -17,7 +17,7 @@ node patch_existing.mjs <예전 schema.sql> d29.json ../../supabase/patches/005_
 ```
 
 ## 화면 테스트 (`tests/ui`)
-앱을 웹으로 빌드해 가짜 Supabase 서버(`mock.mjs`)에 연결하고 Playwright 로 클릭·캡처합니다. 케이스 ID: TC-U01 ~ TC-U23.
+앱을 웹으로 빌드해 가짜 Supabase 서버(`mock.mjs`)에 연결하고 Playwright 로 클릭·캡처합니다. 케이스 ID: TC-U01 ~ TC-U27.
 
 ```bash
 # 1) 가짜 서버 주소로 웹 빌드
@@ -36,4 +36,10 @@ python tests/ui/ui_cases.py tests/ui/shots ui.json
 Edge Function 의 발송 로직을 가짜 DB·가짜 Expo 서버로 검증합니다. 케이스 ID: TC-P01 ~ TC-P04.
 ```bash
 node --experimental-strip-types supabase/functions/send-push/core.test.mjs push.json   # Node 22+
+```
+
+## 회원 탈퇴 로직 테스트 (`supabase/functions/delete-account/core.test.mjs`)
+Edge Function 의 탈퇴 순서(본인 확인 → 익명화 → 로그인 계정 소프트 삭제)를 가짜 의존성으로 검증합니다. 케이스 ID: TC-W01 ~ TC-W04.
+```bash
+node --experimental-strip-types supabase/functions/delete-account/core.test.mjs withdraw.json
 ```

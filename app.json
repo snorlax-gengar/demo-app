@@ -1,18 +1,20 @@
 {
   "expo": {
-    "name": "Studio",
+    "name": "PIQ",
     "slug": "studio-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "studioapp",
+    "scheme": "piq",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "com.gengarileo.piq",
+      "supportsTablet": false
     },
     "android": {
+      "package": "com.gengarileo.piq",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#24766A",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"

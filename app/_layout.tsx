@@ -82,6 +82,11 @@ export default function RootLayout() {
               <Stack.Screen name="add-studio" />
               <Stack.Screen name="notifications" />
             </Stack.Protected>
+            <Stack.Protected guard={signedIn}>
+              <Stack.Screen name="withdraw" />
+            </Stack.Protected>
+            {/* 약관·개인정보 처리방침: 로그인 전후 모두 */}
+            <Stack.Screen name="legal/[doc]" />
           </Stack>
         )}
         <DialogHost />

@@ -478,6 +478,119 @@ with sync_playwright() as p:
         assert after == 1, '읽음 후 종 숫자 남음'
         return f'종 배지 2 → 알림 {rows}건(새 알림 {dots}) → 읽음 처리 1회 → 종 배지 사라짐'
 
+    def open_member_profile():  # 회원의 '내 정보'는 탭으로 연다 (/profile 주소는 직원 탭과 겹침)
+        pg.goto(BASE + '/')
+        pg.wait_for_selector('text=내 수강권', timeout=30000)
+        pg.get_by_text('내 정보', exact=True).last.click()
+        pg.get_by_text('로그아웃', exact=True).last.wait_for(timeout=15000)
+
+    @case('TC-U24', '약관', '내 정보 아래의 링크로 이용약관·개인정보 처리방침을 볼 수 있다', '이용약관(제1조~부칙, 탈퇴 조항) / 처리방침(처리 항목·보관·보호책임자), 자리표시 [운영자명] 노출')
+    def _():
+        open_member_profile()
+        pg.get_by_role('link', name='이용약관').last.click()
+        pg.get_by_text('제7조 (탈퇴)').wait_for(timeout=15000)
+        n_terms = pg.locator('text=/^제\\d+조/').locator('visible=true').count()
+        shot('TC-U24a')
+        pg.get_by_label('뒤로').locator('visible=true').click()
+        pg.get_by_role('link', name='개인정보 처리방침').last.click()
+        pg.get_by_text('8. 개인정보 보호책임자').wait_for(timeout=15000)
+        holder = pg.get_by_text('[운영자명(상호)]', exact=False).locator('visible=true').count()
+        shot('TC-U24')
+        pg.get_by_label('뒤로').locator('visible=true').click()
+        assert n_terms >= 10, n_terms
+        assert holder >= 1
+        return f'이용약관 {n_terms}개 조항, 처리방침 9개 항목·자리표시 [운영자명] 표시'
+
+    @case('TC-U25', '회원 탈퇴', '안내 확인 체크 전에는 탈퇴 버튼이 막혀 있고, 확인 → 최종 확인창 → 탈퇴 완료 후 로그인 화면으로 돌아간다', '체크 전 비활성(요청 0) → 체크 → "정말 탈퇴할까요?" → 탈퇴하기 → "탈퇴가 완료됐어요" → 로그인 화면, 요청 1번(본인)')
+    def _():
+        open_member_profile()
+        pg.get_by_role('link', name='회원 탈퇴').last.click()
+        pg.get_by_text('바로 삭제돼요').wait_for(timeout=15000)
+        btn = pg.get_by_label('회원 탈퇴하기')
+        disabled_before = btn.get_attribute('aria-disabled')
+        btn.click(force=True)
+        pg.wait_for_timeout(300)
+        log0 = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'delete-account']
+        shot('TC-U25a', full=True)
+        pg.get_by_label('안내를 모두 확인했어요').click()
+        btn.click()
+        pg.get_by_text('정말 탈퇴할까요?').wait_for(timeout=5000)
+        pg.wait_for_timeout(600)  # 확인창이 다 나타난 뒤 캡처
+        shot('TC-U25b')
+        pg.get_by_role('button', name='탈퇴하기', exact=True).click()
+        pg.get_by_text('탈퇴가 완료됐어요').wait_for(timeout=10000)
+        pg.wait_for_timeout(600)  # 확인창이 다 나타난 뒤 캡처
+        shot('TC-U25c')
+        pg.get_by_role('button', name='확인').click()
+        pg.wait_for_selector('input[placeholder="name@example.com"]', timeout=15000)
+        pg.wait_for_timeout(300)
+        shot('TC-U25')
+        log = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'delete-account']
+        assert disabled_before == 'true' and len(log0) == 0, (disabled_before, log0)
+        assert len(log) == 1 and log[0]['args']['me'] == 'm1', log
+        return '체크 전 비활성·요청 0 → 확인창 → 탈퇴 완료 → 로그인 화면, 탈퇴 요청 1번(회원 본인)'
+
+    @case('TC-U26', '회원 탈퇴', '탈퇴가 막히는 경우(유일한 원장) 서버 안내를 그대로 보여주고 로그인은 유지된다', '"탈퇴할 수 없습니다" + 스튜디오 이름이 든 안내, 확인 후 탈퇴 화면에 그대로')
+    def _():
+        login('owner@x.com')
+        pg.wait_for_selector('text=전체 강사 보기', timeout=30000)
+        pg.goto(BASE + '/withdraw')
+        n_err = len(errors)
+        pg.get_by_label('안내를 모두 확인했어요').click()
+        pg.get_by_label('회원 탈퇴하기').click()
+        pg.get_by_role('button', name='탈퇴하기', exact=True).click()
+        pg.get_by_text('탈퇴할 수 없습니다').wait_for(timeout=10000)
+        msg = pg.get_by_text('다른 원장이 없는 스튜디오가 있어', exact=False).last.inner_text()
+        # 서버가 400 으로 거절한 것은 의도한 동작 → 공통 오류 검사(TC-U10)에서 제외
+        expected_400 = [e for e in errors[n_err:] if 'status of 400' in e]
+        for e in expected_400:
+            errors.remove(e)
+        pg.wait_for_timeout(600)  # 확인창이 다 나타난 뒤 캡처
+        shot('TC-U26')
+        pg.get_by_role('button', name='확인').click()
+        pg.wait_for_timeout(300)
+        still = pg.get_by_text('바로 삭제돼요').count()
+        assert '데모 필라테스' in msg and still == 1
+        return f'안내 "{msg[:40]}…", 확인 후 탈퇴 화면 유지(로그인 유지), 서버 거절 응답 400 {len(expected_400)}건(의도)'
+
+    @case('TC-U27', '약관', '가입은 약관 동의를 체크해야 할 수 있고, 로그인 전에도 약관을 열어 볼 수 있으며, 동의 시각이 계정 정보에 남는다', '동의 전 가입 버튼 비활성 → 처리방침 링크 열림(비로그인) → 동의 후 가입 요청에 terms_agreed_at·terms_version 포함')
+    def _():
+        pg.goto(BASE + '/profile')
+        pg.get_by_text('로그아웃', exact=True).last.click()
+        pg.get_by_role('button', name='로그아웃').last.click()
+        pg.wait_for_selector('input[placeholder="name@example.com"]', timeout=15000)
+        pg.get_by_text('회원가입', exact=False).last.click()
+        pg.wait_for_selector('input[placeholder="홍길동"]', timeout=15000)
+        pg.fill('input[placeholder="홍길동"]', '새회원')
+        pg.locator('input[placeholder="name@example.com"]').locator('visible=true').fill('fresh@x.com')
+        pg.locator('input[placeholder="비밀번호"]').locator('visible=true').fill('abcdef')
+        submit = pg.get_by_text('가입하기', exact=True).locator('visible=true')
+        submit.click(force=True)
+        pg.wait_for_timeout(300)
+        before = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'signup']
+        shot('TC-U27a', full=True)
+        pg.get_by_text('개인정보 처리방침', exact=True).locator('visible=true').click()
+        pg.get_by_text('1. 처리하는 개인정보').wait_for(timeout=10000)
+        opened = pg.url.replace(BASE, '')
+        pg.get_by_label('뒤로').locator('visible=true').click()
+        pg.wait_for_selector('input[placeholder="홍길동"]', timeout=10000)
+        if not pg.locator('input[placeholder="홍길동"]').locator('visible=true').input_value():
+            pg.fill('input[placeholder="홍길동"]', '새회원')
+            pg.locator('input[placeholder="name@example.com"]').locator('visible=true').fill('fresh@x.com')
+            pg.locator('input[placeholder="비밀번호"]').locator('visible=true').fill('abcdef')
+        pg.get_by_label('이용약관과 개인정보 처리방침에 동의').locator('visible=true').click()
+        shot('TC-U27b', full=True)
+        pg.get_by_text('가입하기', exact=True).locator('visible=true').click()
+        pg.get_by_text('인증 메일을 보냈습니다').wait_for(timeout=10000)
+        pg.wait_for_timeout(600)  # 확인창이 다 나타난 뒤 캡처
+        shot('TC-U27')
+        pg.get_by_role('button', name='확인').click()
+        after = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'signup']
+        assert len(before) == 0, before
+        assert opened == '/legal/privacy', opened
+        assert len(after) == 1 and after[0]['args']['data'].get('terms_agreed_at') and after[0]['args']['data'].get('terms_version'), after
+        return f'동의 전 요청 0 → 비로그인 {opened} 열림 → 동의 후 가입 요청 1번(terms_agreed_at {after[0]["args"]["data"]["terms_agreed_at"][:19]}, 약관 {after[0]["args"]["data"]["terms_version"]})'
+
     @case('TC-U10', '공통', '테스트 내내 브라우저 기본 팝업(confirm/alert)과 화면 오류가 없다', '브라우저 기본 팝업 0건, 페이지 오류 0건')
     def _():
         real = [e for e in errors if 'favicon' not in e]

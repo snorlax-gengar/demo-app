@@ -231,6 +231,19 @@ export function ProfileScreen() {
           className="mt-6 items-center rounded-2xl border border-stone-300 bg-white py-4 active:opacity-80">
           <Text className="text-base font-semibold text-stone-600">로그아웃</Text>
         </Pressable>
+
+        {/* 약관 · 탈퇴 */}
+        <View className="mt-6 flex-row flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <Pressable onPress={() => router.push('/legal/terms')} accessibilityRole="link" hitSlop={8}>
+            <Text className="text-xs text-stone-500 underline">이용약관</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/legal/privacy')} accessibilityRole="link" hitSlop={8}>
+            <Text className="text-xs font-semibold text-stone-600 underline">개인정보 처리방침</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/withdraw')} accessibilityRole="link" hitSlop={8}>
+            <Text className="text-xs text-stone-400 underline">회원 탈퇴</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </Screen>
   );

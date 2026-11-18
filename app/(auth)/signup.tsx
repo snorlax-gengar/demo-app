@@ -1,10 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
 import { showDialog } from '@/lib/dialog';
+import { LEGAL_INFO } from '@/lib/legal';
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
@@ -13,10 +15,11 @@ export default function SignupScreen() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = name.trim().length > 0 && email.trim().length > 0 && password.length >= 6 && !loading;
+  const canSubmit = name.trim().length > 0 && email.trim().length > 0 && password.length >= 6 && agreed && !loading;
 
   const onSubmit = async () => {
     if (!canSubmit) return;
@@ -26,7 +29,8 @@ export default function SignupScreen() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { name: name.trim(), phone: phone.trim() || null } },
+      // 동의 시각·약관 시행일을 계정 정보에 남긴다 (동의 증빙)
+      options: { data: { name: name.trim(), phone: phone.trim() || null, terms_agreed_at: new Date().toISOString(), terms_version: LEGAL_INFO.effectiveDate } },
     });
     setLoading(false);
 
@@ -105,6 +109,29 @@ export default function SignupScreen() {
           textContentType="newPassword"
           className={fieldClass}
         />
+
+        {/* 약관 동의 (필수) */}
+        <View className="mt-5 flex-row items-start">
+          <Pressable
+            onPress={() => setAgreed((v) => !v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: agreed }}
+            accessibilityLabel="이용약관과 개인정보 처리방침에 동의"
+            hitSlop={6}
+            className="flex-row items-center">
+            <Ionicons name={agreed ? 'checkbox' : 'square-outline'} size={22} color={agreed ? '#24766A' : '#A8A29E'} />
+          </Pressable>
+          <Text className="ml-2 flex-1 text-sm leading-6 text-stone-600">
+            <Text onPress={() => router.push('/legal/terms')} className="font-semibold text-brand-700 underline">
+              이용약관
+            </Text>
+            {' 및 '}
+            <Text onPress={() => router.push('/legal/privacy')} className="font-semibold text-brand-700 underline">
+              개인정보 처리방침
+            </Text>
+            {'에 동의합니다 (필수, 만 14세 이상)'}
+          </Text>
+        </View>
 
         {error ? <Text className="mt-3 text-sm text-rose-600">{error}</Text> : null}
 

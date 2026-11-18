@@ -121,6 +121,20 @@ http.createServer(async (req, res) => {
   if (p === '/auth/v1/user') { const id = meOf(req); const pr = profileOf(id); return send(200, { id, email: pr.email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {} }); }
   if (p === '/auth/v1/logout') return send(204, null);
 
+  // 가입: 동의 기록(user_metadata)만 남기고 '이메일 인증' 흐름(세션 없음)으로 응답
+  if (p === '/auth/v1/signup') {
+    const j = JSON.parse(body || '{}');
+    rpcLog.push({ fn: 'signup', args: { email: j.email, data: j.data } });
+    return send(200, { id: 'su1', email: j.email, aud: 'authenticated', role: 'authenticated', user_metadata: j.data, identities: [{ id: 'i' }], confirmation_sent_at: new Date().toISOString() });
+  }
+  // 회원 탈퇴 Edge Function: 원장 이도윤(a1)은 유일한 원장이라 거절, 나머지는 성공
+  if (p === '/functions/v1/delete-account') {
+    const me = meOf(req);
+    rpcLog.push({ fn: 'delete-account', args: { me } });
+    if (!me) return send(401, { error: '로그인이 필요합니다. 다시 로그인한 뒤 시도해 주세요.' });
+    if (me === 'a1') return send(400, { error: '다른 원장이 없는 스튜디오가 있어 탈퇴할 수 없어요 (데모 필라테스). 다른 사람을 원장으로 지정한 뒤 다시 시도해 주세요.' });
+    return send(200, { ok: true, cancelledBookings: 2 });
+  }
   if (p === '/__rpc_log') return send(200, rpcLog);
   if (p.startsWith('/rest/v1/')) {
     const me = meOf(req);

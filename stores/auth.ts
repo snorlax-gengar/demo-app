@@ -98,6 +98,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
+    // 탈퇴 처리된 계정(로그인 계정 삭제가 끝나지 않은 경우)은 들어갈 수 없다
+    if ((profileRes.data as UserProfile).withdrawn_at) {
+      set({ profileError: '탈퇴한 계정입니다. 로그아웃 후 새로 가입해 주세요.' });
+      return;
+    }
+
     const memberships = ((membershipRes.data ?? []) as unknown as Membership[]).filter((m) => m.studio);
     const activeStudioId = pickActive(memberships, get().activeStudioId);
     set({
