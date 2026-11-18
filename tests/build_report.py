@@ -8,10 +8,10 @@ import sys
 D = os.path.dirname(os.path.abspath(__file__))
 OUT = sys.argv[1]
 load = lambda n: json.load(open(os.path.join(D, n)))  # noqa: E731
-db = load('r_new.json')['results'] + load('r_d29.json')['results']
+db = load('r_new.json')['results'] + load('r_d29.json')['results'] + load('r_d36.json')['results']
 db.sort(key=lambda r: r['id'])
 before = {r['id']: r for r in load('r_before.json')['results']}
-patched = {r['id']: r for r in load('r_p56.json')['results']}
+patched = {r['id']: r for r in load('r_p567.json')['results']}
 ui = load('ui.json')['results']
 e = lambda s: html.escape(str(s).replace('Missing expected rejection.', '거절되어야 하는데 허용됨'))  # noqa: E731
 
@@ -38,7 +38,7 @@ rows_db = ''.join(
     f'<tr><td class="id">{e(r["id"])}</td><td>{e(r["area"])}</td><td>{e(r["title"])}</td><td>{e(r["expected"])}</td>'
     f'<td>{e(r["actual"])}</td><td>{badge(r["pass"])}</td></tr>' for r in db)
 
-extra_shots = {'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
+extra_shots = {'TC-U12': ['TC-U12a.png', 'TC-U12.png'], 'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
 cards_ui = ''
 for r in ui:
     shots = extra_shots.get(r['id'], [r['shot']])
@@ -48,10 +48,10 @@ for r in ui:
                  f'<div class="pics">{pics}</div></div>')
 
 cmp_rows = ''
-for cid in ['TC-D09', 'TC-D30', 'TC-D33']:
+for cid in ['TC-D09', 'TC-D30', 'TC-D33', 'TC-D35']:
     b, a, p = before[cid], next(r for r in db if r['id'] == cid), patched[cid]
     cmp_rows += (f'<tr><td class="id">{cid}</td><td>수정 전 (GitHub 64e7e1b schema)</td><td>{e(b["actual"])}</td><td>{badge(b["pass"])}</td></tr>'
-                 f'<tr><td class="id">{cid}</td><td>수정 전 + 패치 005·006 (운영 DB 상태)</td><td>{e(p["actual"])}</td><td>{badge(p["pass"])}</td></tr>'
+                 f'<tr><td class="id">{cid}</td><td>수정 전 + 패치 005·006·007 (운영 DB 상태)</td><td>{e(p["actual"])}</td><td>{badge(p["pass"])}</td></tr>'
                  f'<tr><td class="id">{cid}</td><td>수정 후 schema.sql (새로 설치)</td><td>{e(a["actual"])}</td><td>{badge(a["pass"])}</td></tr>')
 before_total = f'{sum(r["pass"] for r in before.values())}/{len(before)}'
 patched_total = f'{sum(r["pass"] for r in patched.values())}/{len(patched)}'
@@ -105,6 +105,8 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 
 <h2>1. 이번 변경 사항</h2>
 <table><tr><th>구분</th><th>내용</th><th>관련 테스트</th></tr>
+<tr><td>신규 기능</td><td><b>원장용 매출 화면</b>: 내 정보의 "이번 달 매출" 카드 → 월별 결제 합계·지난달 대비·건수·건당 평균·일별 막대·결제 수단/수강권 유형별·결제 내역(누르면 수강권 상세), 금액 없이 발급한 수강권 안내. 원장 외에는 카드가 없고 주소로 들어가도 잠금 (결제 기록은 DB 보안 규칙으로 원장만 조회)</td><td class="id">TC-D34, TC-U12~U14</td></tr>
+<tr><td>버그 수정</td><td>결제일·수강권 시작일 기본값이 UTC 날짜라 한국 오전 9시 전 결제가 전날로 기록되던 문제 → 한국 날짜로. 기존 기록 보정 포함. 패치 <code>007_kst_dates.sql</code></td><td class="id">TC-D35, TC-D36</td></tr>
 <tr><td>버그 수정</td><td>대기 자동 승격 시 수강권 변동 내역에 빈자리를 만든 사람(원장 등)이 처리자로 기록되던 문제 → 처리자 없음 + "자동 확정" 메모, 앱에서 "· 자동" 표시. 패치 <code>005_auto_promotion_actor.sql</code> (기존 기록도 정리)</td><td class="id">TC-D09, TC-D29, TC-U07</td></tr>
 <tr><td>권한 수정</td><td>강사는 <b>본인 수업</b>의 예약만 취소·대신 예약, 원장·실장은 모든 수업 관리 (F-01). DB 함수 + 회원 상세 취소 버튼. 패치 <code>006_class_scoped_staff.sql</code></td><td class="id">TC-D30~D33, TC-U11</td></tr>
 <tr><td>버그 수정</td><td>iPhone 한 줄 입력칸에서 입력 중 글자 아래가 잘리던 문제 (F-03)</td><td class="id">TC-M03</td></tr>
@@ -114,7 +116,7 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 
 <h2>2. 수정 전/후 비교</h2>
 <table><tr><th>케이스</th><th>DB 상태</th><th>결과</th><th>판정</th></tr>{cmp_rows}</table>
-<p class="sub">전체 DB 케이스: 수정 전 {before_total} · 수정 전+패치 005·006 {patched_total} · 수정 후 {db_pass}/{len(db)}</p>
+<p class="sub">전체 DB 케이스: 수정 전 {before_total} · 수정 전+패치 005·006·007 {patched_total} · 수정 후 {db_pass}/{len(db)}</p>
 
 <h2>3. DB 규칙 테스트 ({db_pass}/{len(db)})</h2>
 <table><tr><th>ID</th><th>영역</th><th>시나리오</th><th>기대 결과</th><th>실제 결과</th><th>판정</th></tr>{rows_db}</table>

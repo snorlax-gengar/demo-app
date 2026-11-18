@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { dayjs, type Dayjs } from '@/lib/date';
+import type { RevenueRow } from '@/lib/revenue';
 import { supabase } from '@/lib/supabase';
 import type {
   Booking,
@@ -547,5 +548,59 @@ export function useSetPassActive() {
       if (error) throw toError(error);
     },
     onSettled: () => queryClient.invalidateQueries(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 원장 — 매출 (pass_payments 는 RLS 로 원장만 조회 가능)
+// ---------------------------------------------------------------------------
+
+export interface RevenueData {
+  rows: RevenueRow[];
+  prevTotal: number;
+  /** 이 달에 발급됐지만 결제 기록이 없는 수강권 수 (금액 미입력 발급) */
+  unpaidIssued: number;
+}
+
+/** month: 그 달의 아무 날. 결제일(paid_on, 한국 날짜) 기준으로 집계 */
+export function useRevenue(studioId: string, month: Dayjs, enabled = true) {
+  const from = month.startOf('month').format('YYYY-MM-DD');
+  const to = month.startOf('month').add(1, 'month').format('YYYY-MM-DD');
+  const prevFrom = month.startOf('month').subtract(1, 'month').format('YYYY-MM-DD');
+  return useQuery({
+    queryKey: ['revenue', studioId, from],
+    enabled: !!studioId && enabled,
+    queryFn: async (): Promise<RevenueData> => {
+      const [rowsRes, prevRes, issuedRes] = await Promise.all([
+        supabase
+          .from('pass_payments')
+          .select(
+            `id, amount, method, paid_on, memo,
+             pass:passes!pass_payments_pass_id_fkey ( id, name, class_type ),
+             member:users!pass_payments_member_id_fkey ( id, name )`,
+          )
+          .eq('studio_id', studioId)
+          .gte('paid_on', from)
+          .lt('paid_on', to)
+          .order('paid_on', { ascending: false })
+          .order('created_at', { ascending: false }),
+        supabase.from('pass_payments').select('amount').eq('studio_id', studioId).gte('paid_on', prevFrom).lt('paid_on', from),
+        supabase
+          .from('passes')
+          .select('id, payments:pass_payments ( id )')
+          .eq('studio_id', studioId)
+          .gte('created_at', dayjs(from).toISOString())
+          .lt('created_at', dayjs(to).toISOString()),
+      ]);
+      if (rowsRes.error) throw toError(rowsRes.error);
+      if (prevRes.error) throw toError(prevRes.error);
+      if (issuedRes.error) throw toError(issuedRes.error);
+      const issued = (issuedRes.data ?? []) as unknown as { id: string; payments: { id: string }[] | null }[];
+      return {
+        rows: (rowsRes.data ?? []) as unknown as RevenueRow[],
+        prevTotal: ((prevRes.data ?? []) as { amount: number }[]).reduce((s, r) => s + r.amount, 0),
+        unpaidIssued: issued.filter((p) => !p.payments || p.payments.length === 0).length,
+      };
+    },
   });
 }

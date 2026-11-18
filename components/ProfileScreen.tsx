@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, Text, View } from 'react-native';
 
 import { Screen } from '@/components/ui';
-import { useRegenerateInviteCode } from '@/hooks/queries';
+import { useRegenerateInviteCode, useRevenue } from '@/hooks/queries';
 import { useStudio } from '@/hooks/useStudio';
-import { formatDate } from '@/lib/date';
+import { dayjs, formatDate } from '@/lib/date';
 import { showDialog } from '@/lib/dialog';
-import { ROLE_LABEL } from '@/lib/labels';
+import { ROLE_LABEL, formatWon } from '@/lib/labels';
 import { useAuthStore } from '@/stores/auth';
 
 /** 회원/직원 공용 '내 정보': 현재 스튜디오, 초대 코드(원장·관리자), 스튜디오 전환·추가, 로그아웃 */
@@ -17,7 +18,9 @@ export function ProfileScreen() {
   const memberships = useAuthStore((s) => s.memberships);
   const setActiveStudio = useAuthStore((s) => s.setActiveStudio);
   const signOut = useAuthStore((s) => s.signOut);
-  const { studioId, studio, role, isAdmin } = useStudio();
+  const { studioId, studio, role, isAdmin, isOwner } = useStudio();
+  const thisMonth = useMemo(() => dayjs().startOf('month'), []);
+  const revenue = useRevenue(studioId, thisMonth, isOwner);
   const regenerate = useRegenerateInviteCode();
 
   if (!profile || !studio) return null;
@@ -83,6 +86,26 @@ export function ProfileScreen() {
             </Text>
           </View>
         </View>
+
+        {/* 매출 (원장 전용) */}
+        {isOwner ? (
+          <Pressable
+            onPress={() => router.push('/(admin)/revenue')}
+            accessibilityRole="button"
+            accessibilityLabel="매출 보기"
+            className="mt-4 flex-row items-center rounded-3xl bg-white p-5 active:opacity-70">
+            <View className="h-11 w-11 items-center justify-center rounded-full bg-brand-50">
+              <Ionicons name="stats-chart" size={20} color="#24766A" />
+            </View>
+            <View className="ml-4 flex-1">
+              <Text className="text-sm text-stone-500">이번 달 매출 · 원장만 보임</Text>
+              <Text className="mt-0.5 text-lg font-bold text-ink">
+                {revenue.data ? formatWon(revenue.data.rows.reduce((s, r) => s + r.amount, 0)) : '—'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#A8A29E" />
+          </Pressable>
+        ) : null}
 
         {/* 초대 코드 (원장·관리자) */}
         {isAdmin ? (

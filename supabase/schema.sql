@@ -68,7 +68,7 @@ create table public.passes (
   name             text not null,
   total_count      int  not null check (total_count > 0),
   remaining_count  int  not null check (remaining_count >= 0),
-  starts_on        date not null default current_date,
+  starts_on        date not null default ((now() at time zone 'Asia/Seoul')::date),
   expires_on       date not null,
   is_active        boolean not null default true,
   created_at       timestamptz not null default now(),
@@ -164,7 +164,7 @@ create table public.pass_payments (
   member_id   uuid not null references public.users (id) on delete cascade,
   amount      int  not null check (amount >= 0),
   method      text not null default 'card' check (method in ('card', 'cash', 'transfer', 'other')),
-  paid_on     date not null default current_date,
+  paid_on     date not null default ((now() at time zone 'Asia/Seoul')::date),  -- 한국 날짜 (UTC 기준이면 오전 9시 전 결제가 전날로 잡힘)
   memo        text,
   created_by  uuid references public.users (id) on delete set null,
   created_at  timestamptz not null default now()

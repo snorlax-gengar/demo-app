@@ -320,6 +320,24 @@ await tc('TC-D27', '수강권 기간', '수업 날짜가 수강권 기간 밖이
   assert.equal((await book(m6, inside.id)).status, 'confirmed');
 });
 
+// 9) 매출 (결제 기록)
+await tc('TC-D34', '매출', '결제 기록은 원장만 볼 수 있고 실장·강사·회원에게는 0건', '원장 2건 / 실장·강사·회원 0건', async () => {
+  await asRole(P.owner, () => q(`select * from issue_pass($1,$2,'group','매출 테스트권',10,current_date,current_date+60,300000,'card',null)`, [A.id, m6]));
+  await asRole(P.manager, () => q(`select * from issue_pass($1,$2,'private','매출 테스트 1:1',5,current_date,current_date+60,250000,'transfer',null)`, [A.id, m6]));
+  const seen = {};
+  for (const [label, uid] of [['원장', P.owner], ['실장', P.manager], ['강사', P.t1], ['회원', m6]])
+    seen[label] = (await asRole(uid, () => q(`select count(*)::int c from pass_payments where studio_id=$1`, [A.id])))[0].c;
+  assert.deepEqual(seen, { 원장: 2, 실장: 0, 강사: 0, 회원: 0 });
+  return Object.entries(seen).map(([k, v]) => `${k} ${v}건`).join(' · ');
+});
+await tc('TC-D35', '매출', '결제일 기본값은 한국 날짜다 (UTC 날짜가 아님)', 'paid_on = (now() at time zone Asia/Seoul)::date', async () => {
+  const r = (await q(`select paid_on::text p, ((now() at time zone 'Asia/Seoul')::date)::text k from pass_payments where studio_id=$1 order by created_at desc limit 1`, [A.id]))[0];
+  assert.equal(r.p, r.k);
+  const d = (await q(`select column_default from information_schema.columns where table_name='pass_payments' and column_name='paid_on'`))[0].column_default;
+  assert.match(d, /Asia\/Seoul/);
+  return `결제일 ${r.p} (한국 날짜 ${r.k}), 기본값 ${d}`;
+});
+
 // 8) 스튜디오 격리
 await tc('TC-D28', '스튜디오 격리', '다른 스튜디오 원장은 이 스튜디오의 예약·수강권·회원을 볼 수 없다', '조회 결과 0건', async () => {
   const r = await asRole(P.ownerB, async () => ({

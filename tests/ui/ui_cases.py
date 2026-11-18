@@ -224,6 +224,61 @@ with sync_playwright() as p:
         assert teacher == ['박서연 강사 그룹'], f'강사 {teacher}'
         return f'원장: {", ".join(owner)} / 강사: {", ".join(teacher)}'
 
+    @case('TC-U12', '매출', '원장의 내 정보에 이번 달 매출 카드가 보이고, 누르면 매출 화면이 열린다', '카드 "1,520,000원" → 합계·지난달 대비 26.7% 증가·건수 5건·평균 304,000원')
+    def _():
+        pg.goto(BASE + '/profile')  # 직전 케이스는 강사로 끝남 → 로그아웃 후 원장으로
+        pg.get_by_text('로그아웃', exact=True).last.click()
+        pg.get_by_role('button', name='로그아웃').last.click()
+        login('owner@x.com'); pg.wait_for_selector('text=전체 강사 보기', timeout=30000); pg.goto(BASE + '/profile')
+        card = pg.get_by_label('매출 보기')
+        card.wait_for(timeout=15000)
+        pg.get_by_text('1,520,000원').first.wait_for(timeout=10000)
+        shot('TC-U12a')
+        card.click()
+        pg.get_by_label('결제 합계').wait_for(timeout=15000)
+        pg.wait_for_timeout(500)
+        shot('TC-U12', full=True)
+        total = pg.get_by_label('결제 합계').inner_text()
+        page = pg.inner_text('body')
+        for must in ['1,520,000원', '지난달보다 26.7% 증가', '5건', '304,000원', '카드', '계좌이체', '현금', '결제 내역 5건', '재등록 할인']:
+            assert must in page, f'"{must}" 없음'
+        return f'합계 {total}, 지난달 대비 26.7% 증가, 5건·평균 304,000원, 수단 3종·내역 5건 표시'
+
+    @case('TC-U13', '매출', '결제 수단·수강권 유형별 금액과 이전 달 이동이 맞게 표시된다', '카드 1,020,000원(67%) / 1:1 450,000원 / 이전 달 합계 1,200,000원')
+    def _():
+        page = pg.inner_text('body')
+        assert '1,020,000원' in page and '67%' in page, '카드 합계/비율'
+        assert '450,000원' in page and '1,070,000원' in page, '유형별 합계'
+        pg.get_by_label('이전 달').click()
+        pg.wait_for_timeout(800)
+        prev = pg.get_by_label('결제 합계').inner_text()
+        shot('TC-U13')
+        assert prev == '1,200,000원', prev
+        pg.get_by_label('다음 달').click()
+        pg.wait_for_timeout(500)
+        nxt = pg.get_by_label('다음 달').get_attribute('aria-disabled')
+        return f'카드 1,020,000원(67%), 그룹 1,070,000원·1:1 450,000원, 이전 달 {prev}, 이번 달에서 다음 달 버튼 비활성={nxt}'
+
+    @case('TC-U14', '매출', '강사에게는 매출 카드가 없고, 주소로 들어가도 "원장만 볼 수 있습니다"', '카드 0개 / 잠금 안내, 결제 조회 요청 0건')
+    def _():
+        pg.goto(BASE + '/profile')
+        pg.get_by_text('로그아웃', exact=True).last.click()
+        pg.get_by_role('button', name='로그아웃').last.click()
+        login('teacher@x.com')
+        pg.wait_for_selector('text=오늘의 내 수업', timeout=30000)
+        pg.goto(BASE + '/profile')
+        pg.get_by_text('내 스튜디오').wait_for(timeout=15000)
+        cards = pg.get_by_label('매출 보기').count()
+        reqs = []
+        pg.on('request', lambda r: reqs.append(r.url) if 'pass_payments' in r.url else None)
+        pg.goto(BASE + '/revenue')
+        pg.get_by_text('원장만 볼 수 있습니다').wait_for(timeout=15000)
+        pg.wait_for_timeout(500)
+        shot('TC-U14')
+        assert cards == 0, f'카드 {cards}'
+        assert not reqs, reqs
+        return f'매출 카드 {cards}개, /revenue → 잠금 안내, 결제 조회 요청 {len(reqs)}건'
+
     @case('TC-U10', '공통', '테스트 내내 브라우저 기본 팝업(confirm/alert)과 화면 오류가 없다', '브라우저 기본 팝업 0건, 페이지 오류 0건')
     def _():
         real = [e for e in errors if 'favicon' not in e]

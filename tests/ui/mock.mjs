@@ -76,6 +76,19 @@ const passLogs = {
   ],
 };
 const rpcLog = [];
+// 매출용 결제 기록: 이번 달 5건(합계 1,520,000) / 지난달 2건(합계 1,200,000) → 26.7% 증가
+const ym = (off) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + off); return d.toISOString().slice(0, 7); };
+const pay = (id, pass_id, member_id, amount, method, ymOff, day, memo = null) => ({ id, pass_id, member_id, amount, method, paid_on: `${ym(ymOff)}-${String(day).padStart(2, '0')}`, memo });
+const payments = [
+  pay('pay1', 'p2', 'm1', 400000, 'card', 0, 2),
+  pay('pay2', 'p4', 'mm0', 380000, 'transfer', 0, 5, '재등록 할인'),
+  pay('pay3', 'p1', 'm1', 450000, 'card', 0, 9),
+  pay('pay4', 'p5', 'mm1', 120000, 'cash', 0, 9),
+  pay('pay5', 'p6', 'mm2', 170000, 'card', 0, 12),
+  pay('pay6', 'p2', 'm1', 600000, 'card', -1, 14),
+  pay('pay7', 'p4', 'mm0', 600000, 'transfer', -1, 20),
+];
+const passMeta = (id) => { const x = passes.find((p) => p.id === id); return x ? { id: x.id, name: x.name, class_type: x.class_type } : null; };
 const createdStudios = [];
 let codeSeq = 0;
 
@@ -140,7 +153,16 @@ http.createServer(async (req, res) => {
     }
     if (table === 'passes' && q.id) return out(passes.filter((x) => x.id === eq(q.id)).map((x) => ({ ...x, member: { id: x.member_id, name: profileOf(x.member_id)?.name } })));
     if (table === 'pass_logs') return out(passLogs[eq(q.pass_id)] ?? []);
-    if (table === 'pass_payments') return out([]);
+    if (table === 'pass_payments') {
+      if (q.pass_id) return out([]);
+      const pp = url.searchParams.getAll('paid_on');
+      const gte = (pp.find((v) => v.startsWith('gte.')) || 'gte.').slice(4);
+      const lt = (pp.find((v) => v.startsWith('lt.')) || 'lt.~').slice(3);
+      const rows = payments.filter((r) => r.paid_on >= gte && r.paid_on < lt).sort((a, b) => (a.paid_on < b.paid_on ? 1 : -1));
+      if ((q.select || '').includes('pass:')) return out(rows.map((r) => ({ ...r, pass: passMeta(r.pass_id), member: { id: r.member_id, name: profileOf(r.member_id)?.name } })));
+      return out(rows.map((r) => ({ amount: r.amount })));
+    }
+    if (table === 'passes' && (q.select || '').includes('payments')) return out(passes.filter((x) => x.studio_id === eq(q.studio_id)).map((x) => ({ id: x.id, payments: payments.filter((r) => r.pass_id === x.id).map((r) => ({ id: r.id })) })).concat([{ id: 'p-unpaid', payments: [] }]));
     if (table === 'passes') return out(passes.filter((x) => x.studio_id === eq(q.studio_id) && (!q.member_id || x.member_id === eq(q.member_id))));
     if (table === 'class_overview') {
       let rows = overview.filter((c) => c.studio_id === eq(q.studio_id));
