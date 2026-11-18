@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import { showDialog } from '@/lib/dialog';
 import { LEGAL_INFO } from '@/lib/legal';
+import { authRedirect } from '@/lib/authLinks';
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
@@ -30,7 +31,7 @@ export default function SignupScreen() {
       email: email.trim(),
       password,
       // 동의 시각·약관 시행일을 계정 정보에 남긴다 (동의 증빙)
-      options: { data: { name: name.trim(), phone: phone.trim() || null, terms_agreed_at: new Date().toISOString(), terms_version: LEGAL_INFO.effectiveDate } },
+      options: { emailRedirectTo: authRedirect('/'), data: { name: name.trim(), phone: phone.trim() || null, terms_agreed_at: new Date().toISOString(), terms_version: LEGAL_INFO.effectiveDate } },
     });
     setLoading(false);
 

@@ -107,3 +107,4 @@ drop trigger if exists studio_members_withdrawn_guard on public.studio_members;
 create trigger studio_members_withdrawn_guard
   before insert or update of status on public.studio_members
   for each row execute function public._guard_withdrawn_member();
+revoke execute on function public._guard_withdrawn_member() from public, anon, authenticated;

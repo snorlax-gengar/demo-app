@@ -8,7 +8,7 @@ import sys
 D = os.path.dirname(os.path.abspath(__file__))
 OUT = sys.argv[1]
 load = lambda n: json.load(open(os.path.join(D, n)))  # noqa: E731
-db = load('r_new.json')['results'] + load('r_d29.json')['results'] + load('r_d36.json')['results'] + load('r_push.json')['results'] + load('r_withdraw.json')['results']
+db = load('r_new.json')['results'] + load('r_d29.json')['results'] + load('r_d36.json')['results'] + load('r_push.json')['results'] + load('r_withdraw.json')['results'] + load('r_audit.json')['results'] + load('r_release.json')['results']
 db.sort(key=lambda r: r['id'])
 before = {r['id']: r for r in load('r_before.json')['results']}
 patched = {r['id']: r for r in load('r_p511.json')['results']}
@@ -26,7 +26,9 @@ def img(name):
     return f'<img{cls} src="data:image/jpeg;base64,{base64.b64encode(open(p, "rb").read()).decode()}" alt="{e(name)}">'
 
 
-def badge(ok):
+def badge(ok, status=None):
+    if status == 'warn':
+        return '<span class="b warn">확인 필요</span>'
     return '<span class="b ok">통과</span>' if ok else '<span class="b ng">실패</span>'
 
 
@@ -36,9 +38,9 @@ total, total_pass = len(db) + len(ui), db_pass + ui_pass
 
 rows_db = ''.join(
     f'<tr><td class="id">{e(r["id"])}</td><td>{e(r["area"])}</td><td>{e(r["title"])}</td><td>{e(r["expected"])}</td>'
-    f'<td>{e(r["actual"])}</td><td>{badge(r["pass"])}</td></tr>' for r in db)
+    f'<td>{e(r["actual"])}</td><td>{badge(r["pass"], r.get("status"))}</td></tr>' for r in db)
 
-extra_shots = {'TC-U24': ['TC-U24a.png', 'TC-U24.png'], 'TC-U25': ['TC-U25a.png', 'TC-U25b.png', 'TC-U25c.png', 'TC-U25.png'], 'TC-U27': ['TC-U27a.png', 'TC-U27b.png', 'TC-U27.png'], 'TC-U22': ['TC-U22a.png', 'TC-U22.png', 'TC-U22b.png'], 'TC-U19': ['TC-U19a.png', 'TC-U19.png'], 'TC-U15': ['TC-U15a.png', 'TC-U15b.png', 'TC-U15.png'], 'TC-U17': ['TC-U17a.png'], 'TC-U12': ['TC-U12a.png', 'TC-U12.png'], 'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
+extra_shots = {'TC-U28': ['TC-U28a.png', 'TC-U28.png'], 'TC-U29': ['TC-U29a.png', 'TC-U29.png'], 'TC-U24': ['TC-U24a.png', 'TC-U24.png'], 'TC-U25': ['TC-U25a.png', 'TC-U25b.png', 'TC-U25c.png', 'TC-U25.png'], 'TC-U27': ['TC-U27a.png', 'TC-U27b.png', 'TC-U27.png'], 'TC-U22': ['TC-U22a.png', 'TC-U22.png', 'TC-U22b.png'], 'TC-U19': ['TC-U19a.png', 'TC-U19.png'], 'TC-U15': ['TC-U15a.png', 'TC-U15b.png', 'TC-U15.png'], 'TC-U17': ['TC-U17a.png'], 'TC-U12': ['TC-U12a.png', 'TC-U12.png'], 'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
 cards_ui = ''
 for r in ui:
     shots = extra_shots.get(r['id'], [r['shot']])
@@ -91,7 +93,7 @@ main{{max-width:1180px;margin:0 auto;padding:32px 20px 80px}}h1{{font-size:26px;
 .kpi{{background:#fff;border-radius:14px;padding:16px}}.kpi b{{display:block;font-size:26px}}.kpi span{{color:var(--muted);font-size:13px}}
 table{{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;font-size:13px}}th,td{{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}}
 th{{background:#EEF6F3;font-weight:600}}.id{{font-family:ui-monospace,Consolas,monospace;white-space:nowrap;font-size:12px}}
-.b{{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}}.ok{{background:#DCF2E8;color:#14653F}}.ng{{background:#FDE2E2;color:#A12020}}.wait{{background:#F1EFEA;color:#6B6B66}}
+.b{{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}}.ok{{background:#DCF2E8;color:#14653F}}.ng{{background:#FDE2E2;color:#A12020}}.wait{{background:#F1EFEA;color:#6B6B66}}.warn{{background:#FEF3C7;color:#92400E}}
 .card{{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px}}.ch{{display:flex;gap:8px;align-items:center}}.area{{color:var(--muted);font-size:12px}}
 dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font-size:13px}}dt{{color:var(--muted)}}dd{{margin:0}}
 .pics{{display:flex;gap:10px;overflow-x:auto}}.pics img{{width:240px;border-radius:10px;border:1px solid var(--line);flex:none}}.pics img.wide{{width:540px}}
@@ -102,7 +104,7 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 <div class="sub">대상: snorlax-gengar/demo-app (main 64e7e1b 이후 변경분) · 작성: Claude</div>
 <div class="kpis">
 <div class="kpi"><b>{total_pass}/{total}</b><span>자동 테스트 통과</span></div>
-<div class="kpi"><b>{db_pass}/{len(db)}</b><span>DB 규칙·푸시 발송·탈퇴 로직</span></div>
+<div class="kpi"><b>{db_pass}/{len(db)}</b><span>DB 규칙·보안 점검·출시 설정·로직</span></div>
 <div class="kpi"><b>{ui_pass}/{len(ui)}</b><span>화면 (앱 웹 빌드)</span></div>
 <div class="kpi"><b>{manual_ok}/{len(manual)}</b><span>직접 확인 (실제 계정·DB)</span></div></div>
 
@@ -114,6 +116,10 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 
 <h2>1. 이번 변경 사항</h2>
 <table><tr><th>구분</th><th>내용</th><th>관련 테스트</th></tr>
+<tr><td>출시 준비</td><td><b>보안 점검</b>: Supabase 기본 권한(새 표·함수 전부 공개)을 재현한 상태에서 RLS·비로그인 차단·직접 쓰기 권한·권한 상승 함수 설정·내부 함수 차단을 자동 점검 (<code>tests/db/audit.mjs</code>). 점검 중 탈퇴 트리거 함수의 실행 권한을 막는 보완 1건(F-06)</td><td class="id">TC-S01~S07</td></tr>
+<tr><td>출시 준비</td><td><b>배포 설정</b>: <code>eas.json</code>(개발 빌드·내부 테스트 APK·스토어 배포, 빌드 번호 자동 증가), expo-dev-client, 암호화 수출 답변, 배포 빌드에 Supabase 값이 빠져도 앱이 꺼지지 않고 안내. 점검 스크립트 <code>scripts/check-release.mjs</code>, 대시보드 설정 목록 <code>docs/production-checklist.md</code></td><td class="id">TC-R01~R09</td></tr>
+<tr><td>신규 기능</td><td><b>비밀번호 찾기</b>: 로그인 화면 링크 → 재설정 메일 → 메일의 링크로 앱이 열리면 새 비밀번호 두 번 입력. 앱의 로그인 상태는 건드리지 않고(임시 세션) 변경 후 새 비밀번호로 로그인. 만료 링크 안내, 가입 여부 비노출. 가입 인증 메일도 앱으로 돌아오게(emailRedirectTo), "이메일 인증 전" 로그인 오류 한국어 안내</td><td class="id">TC-U28~U31</td></tr>
+<tr><td>출시 준비</td><td><b>스토어용 공개 웹페이지</b>: 개인정보 처리방침·이용약관·계정 삭제 요청 페이지를 앱과 같은 문서에서 생성(<code>scripts/build-legal-site.mjs</code> → <code>public-site/</code>). Google Play 는 앱 안 탈퇴와 별도로 웹 삭제 요청 링크를 요구</td><td class="id">TC-R09</td></tr>
 <tr><td>신규 기능</td><td><b>회원 탈퇴</b>: 내 정보 맨 아래 "회원 탈퇴" → 삭제·보존 항목 안내 + 확인 체크 → 최종 확인 → 탈퇴. 이름 "탈퇴 회원"·연락처·이메일·회원 메모·푸시 토큰·알림 삭제, 소속은 탈퇴 처리, 앞으로의 예약·대기는 취소(대기자 자동 확정). 지난 예약·출석·수강권·결제 기록은 익명으로 보존(매출 유지). 로그인 계정은 Edge Function <code>delete-account</code>가 소프트 삭제(행을 지우지 않아 기록 연쇄 삭제 없음, 같은 이메일로 재가입 가능). 다른 원장이 없는 스튜디오의 원장·진행 예정 수업 담당 강사는 먼저 정리하도록 막음. 패치 <code>012_withdraw_account.sql</code></td><td class="id">TC-D48~D50, TC-W01~W04, TC-U25·U26</td></tr>
 <tr><td>신규 기능</td><td><b>이용약관·개인정보 처리방침</b>: 앱 안 문서 화면(로그인 전에도 열림), 내 정보 하단 링크, 가입 시 필수 동의 체크(동의 시각·약관 버전을 계정 정보에 기록). 운영자 정보는 <code>lib/legal.ts</code> 의 [자리표시]로 두었음</td><td class="id">TC-U24, TC-U27</td></tr>
 <tr><td>출시 준비</td><td><b>앱 이름 PIQ</b>: 표시 이름·로그인 화면 로고·아이콘(안드로이드 적응형 포함)·스플래시·파비콘, 번들 ID <code>com.gengarileo.piq</code>(iOS·Android), 링크 스킴 <code>piq://</code>. EAS 프로젝트 연결이 끊기지 않도록 slug 는 유지</td><td class="id">—</td></tr>
@@ -149,7 +155,8 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 <tr><td class="id">F-02</td><td>웹에서 기존 메모를 편집하면 커서가 맨 앞에 와서 입력이 앞에 붙음</td><td>화면 테스트 중 발견 ("/ 테스트허리 디스크…")</td><td><span class="b ok">조치 완료</span> 커서를 끝으로 이동, TC-U08 에 검사 추가</td></tr>
 <tr><td class="id">F-03</td><td>iPhone 에서 한 줄 입력칸에 입력하는 동안 글자 아래(g, @ 등)가 잘려 보임 (키보드를 내리면 정상)</td><td>TC-M03 캡처 1 (수정 전) — 한 줄 입력칸에 줄 높이가 함께 지정된 iOS 동작</td><td><span class="b ok">조치 완료</span> 한 줄 입력칸 12곳을 글자 크기만 지정하도록 변경, 캡처 2 (수정 후)</td></tr>
 <tr><td class="id">F-04</td><td>푸시를 눌러 알림함이 열릴 때 위쪽 새로고침 표시(스피너)가 사라지지 않고 목록이 밀린 채 남음 (iOS)</td><td>TC-M08 화면 기록 마지막 장면 — 알림 수신·읽음 처리로 생긴 자동 새로고침에도 스피너를 켜던 구조</td><td><span class="b ok">조치 완료</span> 사용자가 직접 당겼을 때만 표시하도록 11개 화면 변경 (hooks/usePullRefresh)</td></tr>
-<tr><td class="id">F-05</td><td>수업 등록 화면을 주소로 바로 열면 등록 후 개발용 "GO_BACK" 경고, 확인창 버튼에 접근성 이름 없음</td><td>TC-M08 준비 중 발견</td><td><span class="b ok">조치 완료</span> 돌아갈 화면이 없으면 달력으로, 확인창 버튼에 버튼 글자를 접근성 이름으로 지정</td></tr></table>
+<tr><td class="id">F-05</td><td>수업 등록 화면을 주소로 바로 열면 등록 후 개발용 "GO_BACK" 경고, 확인창 버튼에 접근성 이름 없음</td><td>TC-M08 준비 중 발견</td><td><span class="b ok">조치 완료</span> 돌아갈 화면이 없으면 달력으로, 확인창 버튼에 버튼 글자를 접근성 이름으로 지정</td></tr>
+<tr><td class="id">F-06</td><td>탈퇴 재참여 차단용 트리거 함수(_guard_withdrawn_member)에 로그인 사용자 실행 권한이 남아 있음 (직접 호출해도 트리거 밖에서는 실행 불가라 실제 위험은 없음)</td><td>TC-S04·S05 보안 점검 중 발견</td><td><span class="b ok">조치 완료</span> 패치 012·schema.sql 에 실행 권한 회수 추가</td></tr></table>
 </main></body></html>'''
 open(OUT, 'w').write(page)
 print('written', OUT, len(page) // 1024, 'KB')

@@ -12,6 +12,7 @@ import { DialogHost } from '@/components/DialogHost';
 import { isStaffRole } from '@/lib/labels';
 import { pathFromNotification, registerForPush } from '@/lib/push';
 import { queryClient } from '@/lib/queryClient';
+import { SUPABASE_CONFIG_ERROR } from '@/lib/supabase';
 import { useActiveMembership, useAuthStore } from '@/stores/auth';
 
 export default function RootLayout() {
@@ -58,7 +59,9 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        {booting ? (
+        {SUPABASE_CONFIG_ERROR ? (
+          <ConfigErrorScreen message={SUPABASE_CONFIG_ERROR} />
+        ) : booting ? (
           <BootScreen error={session ? profileError : null} />
         ) : (
           // One-App: 지금 선택된 스튜디오에서의 역할에 따라 접근 가능한 그룹이 하나만 열린다.
@@ -87,11 +90,22 @@ export default function RootLayout() {
             </Stack.Protected>
             {/* 약관·개인정보 처리방침: 로그인 전후 모두 */}
             <Stack.Screen name="legal/[doc]" />
+            {/* 비밀번호 재설정 메일 링크: 로그인 전후 모두 */}
+            <Stack.Screen name="reset-password" />
           </Stack>
         )}
         <DialogHost />
       </SafeAreaProvider>
     </QueryClientProvider>
+  );
+}
+
+function ConfigErrorScreen({ message }: { message: string }) {
+  return (
+    <View className="flex-1 items-center justify-center bg-canvas px-8">
+      <Text className="text-center text-base font-semibold text-ink">앱 설정이 필요합니다</Text>
+      <Text className="mt-2 text-center text-sm leading-5 text-stone-500">{message}</Text>
+    </View>
   );
 }
 

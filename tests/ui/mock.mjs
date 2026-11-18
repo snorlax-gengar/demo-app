@@ -115,8 +115,16 @@ http.createServer(async (req, res) => {
 
   if (p === '/auth/v1/token') {
     const { email } = JSON.parse(body || '{}');
+    if (email === 'unconfirmed@x.com') return send(400, { code: 400, error_code: 'email_not_confirmed', msg: 'Email not confirmed' });
     if (!users[email]) return send(400, { error: 'invalid_grant', error_description: 'Invalid login credentials', msg: 'Invalid login credentials', code: 400 });
     return send(200, { access_token: tokenFor(email), token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(now / 1000) + 3600, refresh_token: 'r', user: { id: users[email].id, email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {} } });
+  }
+  // 비밀번호 찾기 메일 요청 / 재설정 링크로 비밀번호 변경
+  if (p === '/auth/v1/recover') { rpcLog.push({ fn: 'recover', args: { ...JSON.parse(body || '{}'), redirect_to: url.searchParams.get('redirect_to') } }); return send(200, {}); }
+  if (p === '/auth/v1/user' && req.method === 'PUT') {
+    const id = meOf(req); const pr = profileOf(id);
+    rpcLog.push({ fn: 'update_user', args: { me: id, password: JSON.parse(body || '{}').password ? '(입력됨)' : null } });
+    return send(200, { id, email: pr?.email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {} });
   }
   if (p === '/auth/v1/user') { const id = meOf(req); const pr = profileOf(id); return send(200, { id, email: pr.email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {} }); }
   if (p === '/auth/v1/logout') return send(204, null);
@@ -124,7 +132,7 @@ http.createServer(async (req, res) => {
   // 가입: 동의 기록(user_metadata)만 남기고 '이메일 인증' 흐름(세션 없음)으로 응답
   if (p === '/auth/v1/signup') {
     const j = JSON.parse(body || '{}');
-    rpcLog.push({ fn: 'signup', args: { email: j.email, data: j.data } });
+    rpcLog.push({ fn: 'signup', args: { email: j.email, data: j.data, redirect_to: url.searchParams.get('redirect_to') } });
     return send(200, { id: 'su1', email: j.email, aud: 'authenticated', role: 'authenticated', user_metadata: j.data, identities: [{ id: 'i' }], confirmation_sent_at: new Date().toISOString() });
   }
   // 회원 탈퇴 Edge Function: 원장 이도윤(a1)은 유일한 원장이라 거절, 나머지는 성공

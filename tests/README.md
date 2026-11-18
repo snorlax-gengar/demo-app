@@ -17,7 +17,7 @@ node patch_existing.mjs <예전 schema.sql> d29.json ../../supabase/patches/005_
 ```
 
 ## 화면 테스트 (`tests/ui`)
-앱을 웹으로 빌드해 가짜 Supabase 서버(`mock.mjs`)에 연결하고 Playwright 로 클릭·캡처합니다. 케이스 ID: TC-U01 ~ TC-U27.
+앱을 웹으로 빌드해 가짜 Supabase 서버(`mock.mjs`)에 연결하고 Playwright 로 클릭·캡처합니다. 케이스 ID: TC-U01 ~ TC-U31.
 
 ```bash
 # 1) 가짜 서버 주소로 웹 빌드
@@ -42,4 +42,17 @@ node --experimental-strip-types supabase/functions/send-push/core.test.mjs push.
 Edge Function 의 탈퇴 순서(본인 확인 → 익명화 → 로그인 계정 소프트 삭제)를 가짜 의존성으로 검증합니다. 케이스 ID: TC-W01 ~ TC-W04.
 ```bash
 node --experimental-strip-types supabase/functions/delete-account/core.test.mjs withdraw.json
+```
+
+## 보안 점검 (`tests/db/audit.mjs`)
+Supabase 기본 권한(새 표·함수를 anon/authenticated 에 전부 허용)을 재현한 뒤 schema.sql 을 설치하고
+RLS·비로그인 차단·직접 쓰기 권한·SECURITY DEFINER 설정·내부 함수 차단을 확인합니다. 케이스 ID: TC-S01 ~ TC-S07.
+```bash
+cd tests/db && node audit.mjs ../../supabase/schema.sql audit.json
+```
+
+## 출시 설정 점검 (`scripts/check-release.mjs`)
+앱 이름·번들 ID·EAS 설정·아이콘 규격·비밀 키 유출·약관 자리표시·공개 웹페이지를 확인합니다 (ok / warn / fail). 케이스 ID: TC-R01 ~ TC-R09.
+```bash
+node scripts/check-release.mjs release.json
 ```

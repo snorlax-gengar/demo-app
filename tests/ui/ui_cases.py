@@ -589,7 +589,76 @@ with sync_playwright() as p:
         assert len(before) == 0, before
         assert opened == '/legal/privacy', opened
         assert len(after) == 1 and after[0]['args']['data'].get('terms_agreed_at') and after[0]['args']['data'].get('terms_version'), after
+        assert after[0]['args']['redirect_to'], '인증 메일이 돌아올 주소(emailRedirectTo) 없음'
         return f'동의 전 요청 0 → 비로그인 {opened} 열림 → 동의 후 가입 요청 1번(terms_agreed_at {after[0]["args"]["data"]["terms_agreed_at"][:19]}, 약관 {after[0]["args"]["data"]["terms_version"]})'
+
+    @case('TC-U28', '비밀번호 찾기', '로그인 화면의 "비밀번호를 잊으셨나요?" → 이메일 입력 → 재설정 메일 요청, 가입 여부는 드러내지 않는다', '메일 요청 1번(돌아올 주소 /reset-password), "가입된 계정이 있으면 … 보냈어요" 안내')
+    def _():
+        pg.goto(BASE + '/')
+        pg.wait_for_selector('input[placeholder="name@example.com"]', timeout=30000)
+        pg.get_by_text('비밀번호를 잊으셨나요?').click()
+        pg.get_by_text('비밀번호 찾기', exact=True).wait_for(timeout=10000)
+        btn = pg.get_by_label('재설정 메일 보내기')
+        dis = btn.get_attribute('aria-disabled')
+        pg.locator('input[placeholder="name@example.com"]').locator('visible=true').fill('member@x.com')
+        shot('TC-U28a')
+        btn.click()
+        pg.get_by_text('가입된 계정이 있으면', exact=False).wait_for(timeout=10000)
+        pg.wait_for_timeout(300)
+        shot('TC-U28')
+        call = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'recover']
+        assert dis == 'true', dis
+        assert len(call) == 1 and call[0]['args']['email'] == 'member@x.com' and call[0]['args']['redirect_to'].endswith('/reset-password'), call
+        return f'입력 전 버튼 비활성 → 요청 1번(email, redirect_to …{call[0]["args"]["redirect_to"][-15:]}) → 안내 표시'
+
+    @case('TC-U29', '비밀번호 찾기', '메일의 재설정 링크로 열면 새 비밀번호를 두 번 입력해 바꾸고, 앱 로그인 상태는 건드리지 않는다', '불일치 시 "두 비밀번호가 달라요"·버튼 비활성 → 일치 → 변경 요청 1번(링크의 계정) → "비밀번호를 바꿨어요" → 로그인 화면(자동 로그인 없음)')
+    def _():
+        import base64
+        b64 = lambda o: base64.urlsafe_b64encode(json.dumps(o).encode()).decode().rstrip('=')  # noqa: E731
+        tok = f"{b64({'alg': 'HS256', 'typ': 'JWT'})}.{b64({'sub': 'm1', 'email': 'member@x.com', 'role': 'authenticated', 'exp': int(time.time()) + 3600})}.sig"
+        pg.goto(BASE + f'/reset-password#access_token={tok}&expires_in=3600&refresh_token=r1&token_type=bearer&type=recovery')
+        pg.get_by_text('새 비밀번호', exact=True).first.wait_for(timeout=20000)
+        pg.locator('input[placeholder="새 비밀번호"]').fill('newpass1')
+        pg.locator('input[placeholder="새 비밀번호 확인"]').fill('newpass2')
+        mismatch = pg.get_by_text('두 비밀번호가 달라요.').count()
+        dis = pg.get_by_label('비밀번호 바꾸기').get_attribute('aria-disabled')
+        shot('TC-U29a')
+        pg.locator('input[placeholder="새 비밀번호 확인"]').fill('newpass1')
+        pg.get_by_label('비밀번호 바꾸기').click()
+        pg.get_by_text('비밀번호를 바꿨어요').wait_for(timeout=10000)
+        pg.wait_for_timeout(600)
+        shot('TC-U29')
+        pg.get_by_role('button', name='확인').click()
+        pg.wait_for_selector('input[placeholder="name@example.com"]', timeout=15000)
+        call = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'update_user']
+        assert mismatch == 1 and dis == 'true', (mismatch, dis)
+        assert len(call) == 1 and call[0]['args'] == {'me': 'm1', 'password': '(입력됨)'}, call
+        return '불일치 안내·버튼 비활성 → 변경 요청 1번(링크의 계정 m1) → 완료 → 로그인 화면(자동 로그인 없음)'
+
+    @case('TC-U30', '비밀번호 찾기', '만료됐거나 이미 쓴 링크로 열면 입력칸 대신 다시 받기 안내가 보인다', '"링크가 만료됐거나 이미 사용됐어요" + "메일 다시 받기" → 비밀번호 찾기 화면')
+    def _():
+        pg.goto(BASE + '/reset-password#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired')
+        pg.get_by_text('링크가 만료됐거나 이미 사용됐어요', exact=False).wait_for(timeout=20000)
+        inputs = pg.locator('input[placeholder="새 비밀번호"]').count()
+        shot('TC-U30')
+        pg.get_by_text('메일 다시 받기').click()
+        pg.get_by_text('비밀번호 찾기', exact=True).wait_for(timeout=10000)
+        assert inputs == 0
+        return f'만료 안내 표시, 입력칸 {inputs}개, "메일 다시 받기" → {pg.url.replace(BASE, "")}'
+
+    @case('TC-U31', '로그인', '이메일 인증 전에 로그인하면 영어 오류 대신 한국어 안내가 보인다', '"이메일 인증이 아직 안 됐어요…"')
+    def _():
+        pg.goto(BASE + '/')
+        pg.wait_for_selector('input[placeholder="name@example.com"]', timeout=30000)
+        pg.fill('input[placeholder="name@example.com"]', 'unconfirmed@x.com')
+        pg.fill('input[placeholder="비밀번호"]', 'x')
+        pg.get_by_text('로그인', exact=True).last.click()
+        pg.get_by_text('이메일 인증이 아직 안 됐어요', exact=False).wait_for(timeout=10000)
+        n_err = len(errors)
+        shot('TC-U31')
+        for e in [e for e in errors if 'status of 400' in e]:
+            errors.remove(e)  # 서버가 400 으로 거절하는 것이 의도한 동작
+        return '안내 "이메일 인증이 아직 안 됐어요. 가입할 때 받은 메일의 링크를 눌러 주세요."'
 
     @case('TC-U10', '공통', '테스트 내내 브라우저 기본 팝업(confirm/alert)과 화면 오류가 없다', '브라우저 기본 팝업 0건, 페이지 오류 0건')
     def _():

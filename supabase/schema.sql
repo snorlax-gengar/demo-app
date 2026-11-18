@@ -1712,6 +1712,7 @@ drop trigger if exists studio_members_withdrawn_guard on public.studio_members;
 create trigger studio_members_withdrawn_guard
   before insert or update of status on public.studio_members
   for each row execute function public._guard_withdrawn_member();
+revoke execute on function public._guard_withdrawn_member() from public, anon, authenticated;
 
 -- -----------------------------------------------------------------------------
 -- 11. 이미 가입된 계정의 프로필 채우기 (v1 → v2 로 다시 설치한 경우)

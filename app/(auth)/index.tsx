@@ -36,7 +36,9 @@ export default function LoginScreen() {
       setError(
         signInError.message === 'Invalid login credentials'
           ? '이메일 또는 비밀번호가 올바르지 않습니다.'
-          : signInError.message,
+          : /not confirmed/i.test(signInError.message)
+            ? '이메일 인증이 아직 안 됐어요. 가입할 때 받은 메일의 링크를 눌러 주세요.'
+            : signInError.message,
       );
     }
     // 성공 시에는 루트 레이아웃이 role 을 읽어 알맞은 탭으로 자동 전환한다
@@ -91,6 +93,10 @@ export default function LoginScreen() {
         />
 
         {error ? <Text className="mt-3 text-sm text-rose-600">{error}</Text> : null}
+
+        <Link href="/forgot" className="mt-3 self-end py-1 text-sm text-stone-500">
+          비밀번호를 잊으셨나요?
+        </Link>
 
         <Pressable
           onPress={onSubmit}
