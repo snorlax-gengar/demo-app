@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as AppleAuthentication from 'expo-apple-authentication';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -113,9 +114,9 @@ export default function LoginScreen() {
 
         {error ? <Text className="mt-3 text-sm text-rose-600">{error}</Text> : null}
 
-        <Link href="/forgot" className="mt-3 self-end py-1 text-sm text-stone-500">
-          비밀번호를 잊으셨나요?
-        </Link>
+        <Pressable onPress={() => router.push('/forgot')} accessibilityRole="link" hitSlop={8} className="mt-3 self-end py-1">
+          <Text className="text-sm text-stone-500">비밀번호를 잊으셨나요?</Text>
+        </Pressable>
 
         <Pressable
           onPress={onSubmit}
@@ -134,53 +135,52 @@ export default function LoginScreen() {
           <Text className="mx-3 text-xs text-stone-400">또는 간편하게</Text>
           <View className="h-px flex-1 bg-stone-200" />
         </View>
-        <Pressable
-          onPress={() => void onSocial('kakao')}
-          disabled={!!social}
-          accessibilityRole="button"
-          accessibilityLabel="카카오로 계속하기"
-          className="h-[52px] flex-row items-center justify-center rounded-2xl bg-[#FEE500] active:opacity-80">
-          {social === 'kakao' ? (
-            <ActivityIndicator color="#191919" />
-          ) : (
-            <>
-              <Ionicons name="chatbubble" size={18} color="#191919" />
-              <Text className="ml-2 text-base font-semibold text-[#191919]">카카오로 계속하기</Text>
-            </>
-          )}
-        </Pressable>
-        {showApple ? (
-          <AppleAuthentication.AppleAuthenticationButton
-            buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-            cornerRadius={16}
-            style={{ height: 52, marginTop: 10 }}
-            onPress={() => void onSocial('apple')}
-          />
-        ) : null}
-        <Pressable
-          onPress={() => void onSocial('google')}
-          disabled={!!social}
-          accessibilityRole="button"
-          accessibilityLabel="Google로 계속하기"
-          className="mt-2.5 h-[52px] flex-row items-center justify-center rounded-2xl border border-stone-300 bg-white active:opacity-80">
-          {social === 'google' ? (
-            <ActivityIndicator color="#1B1F1E" />
-          ) : (
-            <>
-              <Ionicons name="logo-google" size={18} color="#1B1F1E" />
-              <Text className="ml-2 text-base font-semibold text-ink">Google로 계속하기</Text>
-            </>
-          )}
-        </Pressable>
+        <SocialButton provider="kakao" busy={social} onPress={onSocial} />
+        {showApple ? <SocialButton provider="apple" busy={social} onPress={onSocial} /> : null}
+        <SocialButton provider="google" busy={social} onPress={onSocial} />
 
         <View className="mt-6 flex-row justify-center">
           <Text className="text-sm text-stone-500">아직 계정이 없으신가요? </Text>
-          <Link href="/signup" className="text-sm font-semibold text-brand-600">
-            회원가입
-          </Link>
+          <Pressable onPress={() => router.push('/signup')} accessibilityRole="link" hitSlop={8}>
+            <Text className="text-sm font-semibold text-brand-600">회원가입</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+// 간편 로그인 버튼: 세 개 모두 같은 높이·글자 크기. 색은 각 회사 안내(카카오 #FEE500 / 애플 검정 / 구글 흰색+컬러 G)
+const SOCIAL_STYLE = {
+  kakao: { label: '카카오로 계속하기', box: 'bg-[#FEE500]', text: 'text-[#191919]', spinner: '#191919' },
+  apple: { label: 'Apple로 계속하기', box: 'bg-black', text: 'text-white', spinner: '#FFFFFF' },
+  google: { label: 'Google로 계속하기', box: 'border border-stone-300 bg-white', text: 'text-ink', spinner: '#1B1F1E' },
+} as const;
+const GOOGLE_G = require('../../assets/images/social/google-g.png');
+
+function SocialButton({ provider, busy, onPress }: { provider: SocialProvider; busy: SocialProvider | null; onPress: (p: SocialProvider) => void }) {
+  const st = SOCIAL_STYLE[provider];
+  return (
+    <Pressable
+      onPress={() => onPress(provider)}
+      disabled={!!busy}
+      accessibilityRole="button"
+      accessibilityLabel={st.label}
+      className={`mb-2.5 h-[52px] flex-row items-center justify-center rounded-2xl active:opacity-80 ${st.box}`}>
+      {busy === provider ? (
+        <ActivityIndicator color={st.spinner} />
+      ) : (
+        <>
+          <View className="w-5 items-center">
+            {provider === 'google' ? (
+              <Image source={GOOGLE_G} style={{ width: 18, height: 18 }} accessibilityIgnoresInvertColors />
+            ) : (
+              <Ionicons name={provider === 'kakao' ? 'chatbubble' : 'logo-apple'} size={provider === 'apple' ? 20 : 18} color={st.spinner} />
+            )}
+          </View>
+          <Text className={`ml-2 text-base font-semibold ${st.text}`}>{st.label}</Text>
+        </>
+      )}
+    </Pressable>
   );
 }

@@ -666,6 +666,8 @@ with sync_playwright() as p:
         pg.wait_for_selector('input[placeholder="name@example.com"]', timeout=30000)
         kakao, google = pg.get_by_label('카카오로 계속하기'), pg.get_by_label('Google로 계속하기')
         n_k, n_g = kakao.count(), google.count()
+        # 버튼 모양 통일: 높이·글자 크기·글자 굵기가 같고, 구글 G 는 컬러 이미지
+        look = pg.evaluate('''() => ['카카오로 계속하기','Google로 계속하기'].map(l => { const b = document.querySelector(`[aria-label="${l}"]`); const t = [...b.querySelectorAll('div')].find(d => d.textContent === l && !d.children.length) || b; const cs = getComputedStyle(t); return [Math.round(b.getBoundingClientRect().height), cs.fontSize, cs.fontWeight, !!b.querySelector('img')]; })''')
         shot('TC-U32a', full=True)
         with c.expect_page(timeout=15000) as pop:
             kakao.click()
@@ -681,10 +683,11 @@ with sync_playwright() as p:
         shot('TC-U32')
         call = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'authorize']
         assert n_k == 1 and n_g == 1, (n_k, n_g)
+        assert look[0][:3] == look[1][:3] and look[1][3] and not look[0][3], look
         assert '/auth-callback#access_token=' in back_url, back_url
         assert len(call) == 1 and call[0]['args']['provider'] == 'kakao' and call[0]['args']['redirect_to'].endswith('/auth-callback'), call
         assert name == '카카오닉네임', name
-        return f'버튼 카카오·구글 표시 → 인증 요청 provider={call[0]["args"]["provider"]} → 로그인 후 약관 동의 화면, 이름칸 "{name}"'
+        return f'버튼 카카오·구글 높이 {look[0][0]}px·글자 {look[0][1]} 동일, 구글 컬러 G 이미지 → 인증 요청 provider={call[0]["args"]["provider"]} → 로그인 후 약관 동의 화면, 이름칸 "{name}"'
 
     @case('TC-U33', '소셜 로그인', '약관 동의 화면: 동의 체크 전에는 진행할 수 없고, 이름을 고쳐 동의하면 이름·동의 시각이 저장되고 스튜디오 참여 화면으로 간다', '체크 전 버튼 비활성 → 이름 "김카카오"로 수정·동의 → users.name 수정 + 계정 정보에 terms_agreed_at → 스튜디오 만들기/참여 화면')
     def _():
