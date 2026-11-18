@@ -367,6 +367,27 @@ await tc('TC-D39', '수강권 상품', '상품은 삭제할 수 없고(숨김만
   await rejects(rpc(P.manager, `update pass_products set studio_id=$2 where studio_id=$1`, [A.id, B.id]), /permission denied/);
 });
 
+// 11) 발급 후 결제 추가 (패치 009)
+await tc('TC-D40', '결제 추가', '원장·실장은 발급된 수강권에 결제를 추가할 수 있고, 매출(원장 조회)에 잡힌다', '실장 150,000원(이체, 어제) 추가 → 원장 조회 1건, 결제일·작성자 기록', async () => {
+  const pass = (await q(`select id from passes where studio_id=$1 and member_id=$2 order by created_at limit 1`, [A.id, m1]))[0];
+  const r = (await rpc(P.manager, `select * from add_pass_payment($1,150000,'transfer',(now() at time zone 'Asia/Seoul')::date - 1,'잔금')`, [pass.id]))[0];
+  const seen = await rpc(P.owner, `select amount, method, paid_on::text d, memo, created_by from pass_payments where id=$1`, [r.id]);
+  assert.equal(seen.length, 1); assert.equal(seen[0].amount, 150000); assert.equal(seen[0].created_by, P.manager); assert.equal(seen[0].memo, '잔금');
+  const mgr = await rpc(P.manager, `select count(*)::int c from pass_payments where id=$1`, [r.id]);
+  assert.equal(mgr[0].c, 0);
+  return `원장 조회 ${seen[0].amount.toLocaleString()}원·${seen[0].method}·${seen[0].d}·"${seen[0].memo}", 실장 조회 ${mgr[0].c}건`;
+});
+await tc('TC-D41', '결제 추가', '강사·회원·다른 스튜디오 원장은 결제를 추가할 수 없고, 잘못된 금액·날짜는 거절된다', '권한 거절 3건 / 0원·미래 날짜·1년 넘은 날짜·잘못된 수단 거절', async () => {
+  const pass = (await q(`select id from passes where studio_id=$1 and member_id=$2 order by created_at limit 1`, [A.id, m1]))[0];
+  await rejects(rpc(P.t1, `select * from add_pass_payment($1,10000)`, [pass.id]), /원장 또는 관리자만 결제를 추가/);
+  await rejects(rpc(m1, `select * from add_pass_payment($1,10000)`, [pass.id]), /원장 또는 관리자만 결제를 추가/);
+  await rejects(rpc(P.ownerB, `select * from add_pass_payment($1,10000)`, [pass.id]), /수강권을 찾을 수 없습니다/);
+  await rejects(rpc(P.owner, `select * from add_pass_payment($1,0)`, [pass.id]), /1원 이상/);
+  await rejects(rpc(P.owner, `select * from add_pass_payment($1,10000,'card',(now() at time zone 'Asia/Seoul')::date + 1)`, [pass.id]), /오늘 이후로/);
+  await rejects(rpc(P.owner, `select * from add_pass_payment($1,10000,'card',(now() at time zone 'Asia/Seoul')::date - 400)`, [pass.id]), /1년 이내/);
+  await rejects(rpc(P.owner, `select * from add_pass_payment($1,10000,'bitcoin')`, [pass.id]), /결제 수단/);
+});
+
 // 8) 스튜디오 격리
 await tc('TC-D28', '스튜디오 격리', '다른 스튜디오 원장은 이 스튜디오의 예약·수강권·회원을 볼 수 없다', '조회 결과 0건', async () => {
   const r = await asRole(P.ownerB, async () => ({

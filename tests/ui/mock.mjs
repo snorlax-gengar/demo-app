@@ -14,6 +14,7 @@ const users = {
   'member@x.com': { id: 'm1', name: '김하늘', phone: '010-1234-5678' },
   'teacher@x.com': { id: 't1', name: '박서연', phone: '010-2222-3333' },
   'owner@x.com': { id: 'a1', name: '이도윤', phone: '010-9999-0000' },
+  'manager@x.com': { id: 'mg1', name: '한실장', phone: '010-7777-1111' },
   'new1@x.com': { id: 'n1', name: '신규원장', phone: null },
   'new2@x.com': { id: 'n2', name: '신규회원', phone: null },
 };
@@ -33,6 +34,7 @@ const studios = {
 const members = [
   { studio_id: 'S1', user_id: 'a1', role: 'owner', memo: null },
   { studio_id: 'S1', user_id: 't1', role: 'instructor', memo: null },
+  { studio_id: 'S1', user_id: 'mg1', role: 'manager', memo: null },
   { studio_id: 'S1', user_id: 'm1', role: 'member', memo: '허리 디스크 이력 — 롤다운 주의' },
   ...extraPeople.map((p) => ({ studio_id: 'S1', user_id: p.id, role: 'member', memo: null })),
   { studio_id: 'S2', user_id: 'a1', role: 'member', memo: null },
@@ -139,6 +141,12 @@ http.createServer(async (req, res) => {
     if (table === 'rpc/regenerate_invite_code') { const s = studios[args.p_studio_id]; s.invite_code = 'RG' + String(++codeSeq).padStart(4, '0'); return send(200, s.invite_code); }
     if (table === 'rpc/set_member_role') { const m = members.find((x) => x.studio_id === args.p_studio_id && x.user_id === args.p_user_id); m.role = args.p_role; return send(200, m); }
     if (table.startsWith('rpc/')) rpcLog.push({ fn: table.slice(4), args });
+    if (table === 'rpc/add_pass_payment') {
+      const ps = passes.find((x) => x.id === args.p_pass_id);
+      const row = { id: 'pay' + (payments.length + 1), pass_id: ps.id, member_id: ps.member_id, amount: args.p_amount, method: args.p_method, paid_on: args.p_paid_on, memo: args.p_memo };
+      payments.push(row);
+      return send(200, row);
+    }
     if (table === 'rpc/book_class') return send(200, { id: 'nb1', status: 'confirmed', member_id: args.p_member_id, class_id: args.p_class_id });
     if (table.startsWith('rpc/')) return send(200, { id: args.p_booking_id ?? 'nb', status: args.p_status ?? 'confirmed', pass_refunded: true });
 
@@ -162,7 +170,9 @@ http.createServer(async (req, res) => {
       return out(products.filter((x) => x.studio_id === eq(q.studio_id)).sort((a, b) => Number(b.is_active) - Number(a.is_active) || (a.created_at < b.created_at ? -1 : 1)));
     }
     if (table === 'pass_payments') {
-      if (q.pass_id) return out([]);
+      const myRole = members.find((m) => m.studio_id === 'S1' && m.user_id === me)?.role;
+      if (myRole !== 'owner') return out([]); // RLS: 원장만
+      if (q.pass_id) return out(payments.filter((r) => r.pass_id === eq(q.pass_id)).map((r) => ({ id: r.id, amount: r.amount, method: r.method, paid_on: r.paid_on, memo: r.memo })));
       const pp = url.searchParams.getAll('paid_on');
       const gte = (pp.find((v) => v.startsWith('gte.')) || 'gte.').slice(4);
       const lt = (pp.find((v) => v.startsWith('lt.')) || 'lt.~').slice(3);

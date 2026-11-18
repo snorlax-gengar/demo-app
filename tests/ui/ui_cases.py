@@ -354,6 +354,48 @@ with sync_playwright() as p:
         shot('TC-U18')
         return f'14일권 만료일 {exp.strftime("%Y.%m.%d")} (오늘+13일)'
 
+    @case('TC-U19', '결제 추가', '원장이 수강권 상세에서 나중에 받은 금액을 추가하면 결제 기록·합계에 바로 보인다', '50,000원·계좌이체·어제·"잔금" 추가 → 2건, 합계 220,000원')
+    def _():
+        import datetime
+        pg.goto(BASE + '/pass/p6')
+        pg.get_by_text('결제 기록 · 원장만 보임').wait_for(timeout=15000)
+        pg.get_by_text('합계 170,000원').wait_for(timeout=10000)
+        pg.get_by_label('결제 추가').click()
+        pg.get_by_label('결제 금액').fill('50000')
+        pg.get_by_role('radio', name='계좌이체').click()
+        plus_disabled = pg.get_by_label('결제일 하루 뒤').get_attribute('aria-disabled')
+        pg.get_by_label('결제일 하루 전').click()
+        pg.get_by_label('결제 메모').fill('잔금')
+        pg.wait_for_timeout(300)
+        shot('TC-U19a')
+        pg.get_by_text('추가', exact=True).last.click()
+        pg.get_by_role('button', name='추가').last.click()
+        pg.get_by_text('결제를 추가했습니다').wait_for(timeout=5000)
+        pg.get_by_role('button', name='확인').click()
+        pg.get_by_text('합계 220,000원').wait_for(timeout=10000)
+        pg.wait_for_timeout(300)
+        shot('TC-U19')
+        log = json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read())
+        call = [x for x in log if x['fn'] == 'add_pass_payment'][-1]['args']
+        y = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        assert call == {'p_pass_id': 'p6', 'p_amount': 50000, 'p_method': 'transfer', 'p_paid_on': y, 'p_memo': '잔금'}, call
+        assert plus_disabled == 'true', f'오늘 이후 버튼 {plus_disabled}'
+        return f'요청 add_pass_payment(50,000원, transfer, {y}, 잔금), 합계 170,000→220,000원, 오늘 이후 날짜 버튼 비활성'
+
+    @case('TC-U20', '결제 추가', '추가한 결제가 매출 화면 합계에 반영된다', '이번 달 1,520,000원 → 1,570,000원 (결제일이 이번 달일 때)')
+    def _():
+        import datetime
+        y = datetime.date.today() - datetime.timedelta(days=1)
+        expect = '1,570,000원' if y.month == datetime.date.today().month else '1,520,000원'
+        pg.goto(BASE + '/revenue')
+        pg.get_by_label('결제 합계').wait_for(timeout=15000)
+        pg.wait_for_timeout(500)
+        total = pg.get_by_label('결제 합계').inner_text()
+        assert total == expect, total
+        assert '잔금' in pg.inner_text('body')
+        shot('TC-U20')
+        return f'매출 합계 {total}, 결제 내역에 "잔금" 표시'
+
     @case('TC-U14', '매출', '강사에게는 매출·수강권 상품 카드가 없고, 매출 주소로 들어가도 "원장만 볼 수 있습니다"', '카드 0개 / 잠금 안내, 결제 조회 요청 0건')
     def _():
         pg.goto(BASE + '/profile')
@@ -373,6 +415,30 @@ with sync_playwright() as p:
         assert cards == 0, f'카드 {cards}'
         assert not reqs, reqs
         return f'매출·상품 카드 {cards}개, /revenue → 잠금 안내, 결제 조회 요청 {len(reqs)}건'
+
+    @case('TC-U21', '결제 추가', '실장은 결제 목록은 못 보지만 결제를 추가할 수 있다', '"결제 기록은 원장만 볼 수 있습니다" 안내 + 결제 추가 성공')
+    def _():
+        pg.goto(BASE + '/profile')
+        pg.get_by_text('로그아웃', exact=True).last.click()
+        pg.get_by_role('button', name='로그아웃').last.click()
+        login('manager@x.com')
+        pg.wait_for_selector('text=전체 강사 보기', timeout=30000)
+        pg.goto(BASE + '/pass/p6')
+        pg.get_by_text('결제 기록은 원장만 볼 수 있습니다', exact=False).wait_for(timeout=15000)
+        listed = pg.get_by_text('합계', exact=False).count()
+        pg.get_by_label('결제 추가').click()
+        pg.get_by_label('결제 금액').fill('30000')
+        pg.get_by_text('추가', exact=True).last.click()
+        pg.get_by_role('button', name='추가').last.click()
+        pg.get_by_text('결제를 추가했습니다').wait_for(timeout=5000)
+        pg.wait_for_timeout(300)
+        shot('TC-U21')
+        pg.get_by_role('button', name='확인').click()
+        assert listed == 0, f'실장에게 합계 {listed}개 노출'
+        log = json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read())
+        call = [x for x in log if x['fn'] == 'add_pass_payment'][-1]['args']
+        assert call['p_amount'] == 30000
+        return f'결제 목록·합계 노출 0, 추가 요청 {call["p_amount"]:,}원 성공'
 
     @case('TC-U10', '공통', '테스트 내내 브라우저 기본 팝업(confirm/alert)과 화면 오류가 없다', '브라우저 기본 팝업 0건, 페이지 오류 0건')
     def _():

@@ -15,6 +15,7 @@ import type {
   MemberWithPasses,
   NewClassInput,
   Pass,
+  PaymentMethod,
   Role,
   Studio,
   StudioPerson,
@@ -640,5 +641,23 @@ export function useSavePassProduct() {
       if (error) throw toError(error);
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['pass_products'] }),
+  });
+}
+
+/** 발급 후 결제 추가 (원장·관리자). 결제 목록은 원장만 보인다 */
+export function useAddPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { passId: string; amount: number; method: PaymentMethod; paidOn: string; memo?: string }) => {
+      const { error } = await supabase.rpc('add_pass_payment', {
+        p_pass_id: vars.passId,
+        p_amount: vars.amount,
+        p_method: vars.method,
+        p_paid_on: vars.paidOn,
+        p_memo: vars.memo?.trim() || null,
+      });
+      if (error) throw toError(error);
+    },
+    onSettled: () => queryClient.invalidateQueries(),
   });
 }
