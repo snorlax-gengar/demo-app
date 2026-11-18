@@ -43,6 +43,12 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6a033c4a-2f87-4a65-b450-d6dc094749b4"
+      }
+    },
+    "owner": "gengarileo"
   }
 }

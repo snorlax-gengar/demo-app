@@ -53,3 +53,6 @@ Claude outputs/
 tests/db/node_modules/
 tests/db/result.json
 tests/ui/shots/
+
+# Supabase CLI 로컬 연결 정보
+supabase/.temp/
