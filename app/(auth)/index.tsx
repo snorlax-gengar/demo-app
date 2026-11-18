@@ -78,9 +78,11 @@ export default function LoginScreen() {
           paddingBottom: insets.bottom + 24,
         }}>
         <View className="mb-10">
-          <View className="h-12 w-16 items-center justify-center rounded-2xl bg-brand-600">
-            <Text className="text-lg font-extrabold tracking-wider text-white">PIQ</Text>
-          </View>
+          <Image
+            source={require('../../assets/images/icon.png')}
+            accessibilityLabel="PIQ 로고"
+            style={{ width: 56, height: 56, borderRadius: 14, borderWidth: 1, borderColor: '#E7E5E4' }}
+          />
           <Text className="mt-5 text-3xl font-bold text-ink">로그인</Text>
           <Text className="mt-2 text-base text-stone-500">수업 예약과 일정을 한 곳에서 관리하세요.</Text>
         </View>
