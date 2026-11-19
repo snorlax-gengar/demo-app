@@ -29,7 +29,7 @@ export async function signInWithBrowser(provider: 'kakao' | 'google'): Promise<S
     options: {
       redirectTo,
       skipBrowserRedirect: true,
-      // 카카오는 Supabase 가 account_email 을 함께 요청하므로 카카오 앱을 비즈 앱으로 전환해 이메일 동의항목을 켜야 한다 (docs/social-login-setup.md)
+      // 카카오는 Supabase 가 account_email·profile_image·profile_nickname 을 기본 요청함 (docs/social-login-setup.md)
       ...(provider === 'google' ? { queryParams: { prompt: 'select_account' } } : {}),
     },
   });
@@ -40,10 +40,14 @@ export async function signInWithBrowser(provider: 'kakao' | 'google'): Promise<S
   return finishFromUrl(result.url);
 }
 
-/** 브라우저 로그인 후 돌아온 주소(#access_token=…)로 세션 저장 */
+/** 브라우저 로그인 후 돌아온 주소(#access_token=… 또는 ?code=…)로 세션 저장 */
 export async function finishFromUrl(url: string): Promise<SocialResult> {
   const p = parseAuthLink(url);
   if (p.error) return friendlyError(p.error);
+  if (p.code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(p.code);
+    return error ? friendlyError(error.message) : null;
+  }
   if (!p.accessToken || !p.refreshToken) return '로그인 정보를 받지 못했어요. 다시 시도해 주세요.';
   const { error } = await supabase.auth.setSession({ access_token: p.accessToken, refresh_token: p.refreshToken });
   return error ? friendlyError(error.message) : null;

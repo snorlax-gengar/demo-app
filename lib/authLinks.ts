@@ -7,11 +7,12 @@ export const authRedirect = (path: string) => Linking.createURL(path);
 export interface AuthLinkParams {
   accessToken?: string;
   refreshToken?: string;
+  code?: string;
   type?: string;
   error?: string;
 }
 
-/** 메일 링크로 열린 주소의 #access_token=…&refresh_token=…&type=recovery (또는 #error_description=…) 읽기 */
+/** 메일 링크·소셜 로그인으로 열린 주소의 #access_token=… 또는 ?code=… (또는 #error_description=…) 읽기 */
 export function parseAuthLink(url: string | null | undefined): AuthLinkParams {
   if (!url) return {};
   const hash = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
@@ -21,6 +22,7 @@ export function parseAuthLink(url: string | null | undefined): AuthLinkParams {
   return {
     accessToken: p.get('access_token') ?? undefined,
     refreshToken: p.get('refresh_token') ?? undefined,
+    code: p.get('code') ?? undefined,
     type: p.get('type') ?? undefined,
     error: error ? error.replace(/\+/g, ' ') : undefined,
   };
