@@ -3,13 +3,13 @@
 export const LEGAL_INFO = {
   appName: 'PIQ',
   siteUrl: 'https://piq.expo.app', // 공개 페이지(EAS Hosting): 처리방침·약관·계정 삭제
-  operator: '[운영자명(상호)]',
-  representative: '[대표자명]',
-  businessNumber: '[사업자등록번호]',
-  address: '[주소]',
-  email: '[문의 이메일]',
-  privacyOfficer: '[개인정보 보호책임자 이름]',
-  effectiveDate: '[시행일 YYYY-MM-DD]',
+  operator: '노경환',
+  representative: '노경환',
+  businessNumber: '', // 개인 운영(사업자 등록 전). 등록하면 번호를 넣으면 문서에 표시됨
+  address: '', // 사업자 등록 시 사업장 주소
+  email: 'gengarileo@gmail.com',
+  privacyOfficer: '노경환',
+  effectiveDate: '2026-11-19',
 };
 
 export type LegalDocId = 'terms' | 'privacy';
@@ -113,7 +113,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
       },
       {
         heading: '8. 개인정보 보호책임자',
-        body: `· 책임자: ${I.privacyOfficer}\n· 연락처: ${I.email}\n· 운영자: ${I.operator} (대표 ${I.representative}, 사업자등록번호 ${I.businessNumber}, ${I.address})\n개인정보 침해 신고·상담은 개인정보침해신고센터(privacy.kisa.or.kr, 국번 없이 118)에도 할 수 있습니다.`,
+        body: `· 책임자: ${I.privacyOfficer}\n· 연락처: ${I.email}\n· 운영자: ${I.operator}${I.businessNumber ? ` (대표 ${I.representative}, 사업자등록번호 ${I.businessNumber}${I.address ? `, ${I.address}` : ''})` : ' (개인 운영)'}\n개인정보 침해 신고·상담은 개인정보침해신고센터(privacy.kisa.or.kr, 국번 없이 118)에도 할 수 있습니다.`,
       },
       {
         heading: '8-1. 간편 로그인으로 받는 정보 (Google·카카오·Apple)',

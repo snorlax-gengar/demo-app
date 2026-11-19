@@ -12,8 +12,9 @@ fs.mkdirSync(out, { recursive: true });
 const rootDir = path.resolve(path.dirname(new URL(import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, '$1'), '..');
 fs.copyFileSync(path.join(rootDir, 'assets/images/favicon.png'), path.join(out, 'favicon.png'));
 fs.copyFileSync(path.join(rootDir, 'assets/images/icon.png'), path.join(out, 'icon.png'));
-// Google Search Console 소유권 확인: GOOGLE_SITE_VERIFICATION=값 node … 로 실행하면 <meta> 태그가 들어간다
-const VERIFY = process.env.GOOGLE_SITE_VERIFICATION ? `\n<meta name="google-site-verification" content="${process.env.GOOGLE_SITE_VERIFICATION}">` : '';
+// Google Search Console 소유권 확인 태그 (https://piq.expo.app, 2026-11-19 발급). 지우면 소유권 확인이 풀린다
+const SITE_VERIFICATION = process.env.GOOGLE_SITE_VERIFICATION ?? 'O0YCI5U6qO-XEosmKb0IyOpkQ8WdaqrGtYxuAjSDPOQ';
+const VERIFY = SITE_VERIFICATION ? `\n<meta name="google-site-verification" content="${SITE_VERIFICATION}" />` : '';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const page = (title, body) => `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

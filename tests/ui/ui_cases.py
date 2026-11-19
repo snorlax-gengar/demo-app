@@ -484,7 +484,7 @@ with sync_playwright() as p:
         pg.get_by_text('내 정보', exact=True).last.click()
         pg.get_by_text('로그아웃', exact=True).last.wait_for(timeout=15000)
 
-    @case('TC-U24', '약관', '내 정보 아래의 링크로 이용약관·개인정보 처리방침을 볼 수 있다', '이용약관(제1조~부칙, 탈퇴 조항) / 처리방침(처리 항목·보관·보호책임자), 자리표시 [운영자명] 노출')
+    @case('TC-U24', '약관', '내 정보 아래의 링크로 이용약관·개인정보 처리방침을 볼 수 있다', '이용약관(제1조~부칙, 탈퇴 조항) / 처리방침(처리 항목·보관·국외 이전·간편 로그인·보호책임자), 운영자 정보 채워짐(자리표시 없음)')
     def _():
         open_member_profile()
         pg.get_by_role('link', name='이용약관').last.click()
@@ -494,12 +494,13 @@ with sync_playwright() as p:
         pg.get_by_label('뒤로').locator('visible=true').click()
         pg.get_by_role('link', name='개인정보 처리방침').last.click()
         pg.get_by_text('8. 개인정보 보호책임자').wait_for(timeout=15000)
-        holder = pg.get_by_text('[운영자명(상호)]', exact=False).locator('visible=true').count()
+        holder = pg.get_by_text('gengarileo@gmail.com', exact=False).locator('visible=true').count()
+        leftover = pg.locator('text=/\\[(운영자명|문의 이메일|시행일|리전)/').count()
         shot('TC-U24')
         pg.get_by_label('뒤로').locator('visible=true').click()
         assert n_terms >= 10, n_terms
-        assert holder >= 1
-        return f'이용약관 {n_terms}개 조항, 처리방침 9개 항목·자리표시 [운영자명] 표시'
+        assert holder >= 1 and leftover == 0, (holder, leftover)
+        return f'이용약관 {n_terms}개 조항, 처리방침에 보호책임자 연락처 표시, 남은 자리표시 {leftover}개'
 
     @case('TC-U25', '회원 탈퇴', '안내 확인 체크 전에는 탈퇴 버튼이 막혀 있고, 확인 → 최종 확인창 → 탈퇴 완료 후 로그인 화면으로 돌아간다', '체크 전 비활성(요청 0) → 체크 → "정말 탈퇴할까요?" → 탈퇴하기 → "탈퇴가 완료됐어요" → 로그인 화면, 요청 1번(본인)')
     def _():
