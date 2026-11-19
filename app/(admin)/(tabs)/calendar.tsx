@@ -113,7 +113,7 @@ export default function CalendarScreen() {
                 accessibilityState={{ selected: mode === m }}
                 className={`rounded-full px-4 py-1.5 ${mode === m ? 'bg-white' : ''}`}>
                 <Text className={`text-sm font-semibold ${mode === m ? 'text-ink' : 'text-stone-500'}`}>
-                  {m === 'month' ? '월간' : '일간 시간표'}
+                  {m === 'month' ? '월간' : '일간'}
                 </Text>
               </Pressable>
             ))}
