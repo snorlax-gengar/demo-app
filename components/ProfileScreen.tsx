@@ -19,6 +19,7 @@ import { showDialog } from '@/lib/dialog';
 import { ROLE_LABEL, formatWon } from '@/lib/labels';
 import {
   SOCIAL_LABEL,
+  appleAvailable,
   getLinkedIdentities,
   linkSocialAccount,
   unlinkSocialAccount,
@@ -426,6 +427,11 @@ function SocialLinkSection() {
   const session = useAuthStore((s) => s.session);
   const [identities, setIdentities] = useState<UserIdentity[]>(() => session?.user.identities ?? []);
   const [busy, setBusy] = useState<SocialProvider | null>(null);
+  const [showApple, setShowApple] = useState(false);
+
+  useEffect(() => {
+    void appleAvailable().then(setShowApple);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -438,6 +444,7 @@ function SocialLinkSection() {
   }, [session?.user.id]);
 
   const byProvider = (p: SocialProvider) => identities.find((i) => i.provider === p);
+  const visibleProviders = LINK_PROVIDERS.filter((p) => p !== 'apple' || showApple || Boolean(byProvider('apple')));
   const canUnlink = identities.length > 1;
 
   const onLink = async (provider: SocialProvider) => {
@@ -484,7 +491,7 @@ function SocialLinkSection() {
     <>
       <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">간편 로그인 연결</Text>
       <View className="rounded-3xl bg-surface px-5">
-        {LINK_PROVIDERS.map((provider, index) => {
+        {visibleProviders.map((provider, index) => {
           const linked = byProvider(provider);
           const loading = busy === provider;
           return (

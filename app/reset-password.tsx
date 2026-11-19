@@ -1,7 +1,7 @@
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { parseAuthLink, resetPasswordWithLink, type AuthLinkParams } from '@/lib/authLinks';
@@ -42,38 +42,42 @@ export default function ResetPasswordScreen() {
 
   const field = 'rounded-2xl border border-stone-200 bg-white px-4 py-4 text-[16px] text-ink';
   return (
-    <View className="flex-1 bg-canvas px-6" style={{ paddingTop: insets.top + 32 }}>
-      <Text className="text-3xl font-bold text-ink">새 비밀번호</Text>
-      {!params ? (
-        <ActivityIndicator className="mt-10" color="#0B7A4D" />
-      ) : linkError ? (
-        <>
-          <Text className="mt-3 text-base leading-6 text-stone-600">
-            {/expired|invalid/i.test(linkError) ? '링크가 만료됐거나 이미 사용됐어요.' : linkError} 비밀번호 찾기에서 메일을 다시 받아 주세요.
-          </Text>
-          <Pressable onPress={() => router.replace('/forgot')} className="mt-8 items-center rounded-2xl bg-brand-600 py-4 active:opacity-80">
-            <Text className="text-base font-bold text-white">메일 다시 받기</Text>
-          </Pressable>
-        </>
-      ) : (
-        <>
-          <Text className="mt-2 text-base text-stone-500">앞으로 로그인할 때 쓸 비밀번호를 정해 주세요. (6자 이상)</Text>
-          <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">새 비밀번호</Text>
-          <TextInput value={pw} onChangeText={setPw} placeholder="새 비밀번호" placeholderTextColor="#A8A29E" secureTextEntry textContentType="newPassword" className={field} />
-          <Text className="mb-2 mt-4 text-sm font-semibold text-stone-600">한 번 더</Text>
-          <TextInput value={pw2} onChangeText={setPw2} placeholder="새 비밀번호 확인" placeholderTextColor="#A8A29E" secureTextEntry textContentType="newPassword" onSubmitEditing={submit} className={field} />
-          {pw2.length > 0 && pw !== pw2 ? <Text className="mt-2 text-sm text-rose-600">두 비밀번호가 달라요.</Text> : null}
-          {error ? <Text className="mt-3 text-sm text-rose-600">{error}</Text> : null}
-          <Pressable
-            onPress={submit}
-            disabled={!valid || busy}
-            accessibilityRole="button"
-            accessibilityLabel="비밀번호 바꾸기"
-            className={`mt-6 items-center rounded-2xl py-4 active:opacity-80 ${valid && !busy ? 'bg-brand-600' : 'bg-brand-200'}`}>
-            {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text className="text-base font-bold text-white">비밀번호 바꾸기</Text>}
-          </Pressable>
-        </>
-      )}
-    </View>
+    <KeyboardAvoidingView className="flex-1 bg-canvas" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }}>
+        <Text className="text-3xl font-bold text-ink">새 비밀번호</Text>
+        {!params ? (
+          <ActivityIndicator className="mt-10" color="#0B7A4D" />
+        ) : linkError ? (
+          <>
+            <Text className="mt-3 text-base leading-6 text-stone-600">
+              {/expired|invalid/i.test(linkError) ? '링크가 만료됐거나 이미 사용됐어요.' : linkError} 비밀번호 찾기에서 메일을 다시 받아 주세요.
+            </Text>
+            <Pressable onPress={() => router.replace('/forgot')} className="mt-8 items-center rounded-2xl bg-brand-600 py-4 active:opacity-80">
+              <Text className="text-base font-bold text-white">메일 다시 받기</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Text className="mt-2 text-base text-stone-500">앞으로 로그인할 때 쓸 비밀번호를 정해 주세요. (6자 이상)</Text>
+            <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">새 비밀번호</Text>
+            <TextInput value={pw} onChangeText={setPw} placeholder="새 비밀번호" placeholderTextColor="#A8A29E" secureTextEntry textContentType="newPassword" className={field} />
+            <Text className="mb-2 mt-4 text-sm font-semibold text-stone-600">한 번 더</Text>
+            <TextInput value={pw2} onChangeText={setPw2} placeholder="새 비밀번호 확인" placeholderTextColor="#A8A29E" secureTextEntry textContentType="newPassword" onSubmitEditing={submit} className={field} />
+            {pw2.length > 0 && pw !== pw2 ? <Text className="mt-2 text-sm text-rose-600">두 비밀번호가 달라요.</Text> : null}
+            {error ? <Text className="mt-3 text-sm text-rose-600">{error}</Text> : null}
+            <Pressable
+              onPress={submit}
+              disabled={!valid || busy}
+              accessibilityRole="button"
+              accessibilityLabel="비밀번호 바꾸기"
+              className={`mt-6 items-center rounded-2xl py-4 active:opacity-80 ${valid && !busy ? 'bg-brand-600' : 'bg-brand-200'}`}>
+              {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text className="text-base font-bold text-white">비밀번호 바꾸기</Text>}
+            </Pressable>
+          </>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

@@ -1,6 +1,7 @@
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 
 import { finishFromUrl } from '@/lib/socialAuth';
@@ -13,9 +14,14 @@ import { useAuthStore } from '@/stores/auth';
  */
 export default function AuthCallback() {
   const router = useRouter();
+  const linkingUrl = Linking.useLinkingURL();
+  const handled = useRef(false);
+
   useEffect(() => {
+    if (handled.current) return;
     // 웹 팝업으로 열린 경우: 여는 창(로그인 화면)이 이 주소를 읽어 마무리하므로 여기서는 아무것도 하지 않는다
     if (Platform.OS === 'web' && typeof window !== 'undefined' && window.opener) {
+      handled.current = true;
       WebBrowser.maybeCompleteAuthSession();
       return;
     }
@@ -24,16 +30,21 @@ export default function AuthCallback() {
       const s = useAuthStore.getState().session;
       router.replace(s && !s.user.user_metadata?.terms_agreed_at ? '/complete-profile' : '/');
     };
-    const url = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.href : null;
-    if (!url || (!url.includes('#') && !url.includes('code='))) {
-      next();
+    const url = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.href : linkingUrl;
+    if (!url || (!url.includes('#') && !url.includes('code=') && !url.includes('error='))) {
+      // 네이티브에서 초기 딥링크가 아직 도착하지 않았을 수 있으므로 웹이거나 토큰 없는 URL 일 때만 바로 이동
+      if (Platform.OS === 'web' || url) {
+        handled.current = true;
+        next();
+      }
       return;
     }
+    handled.current = true;
     void finishFromUrl(url).then((r) => {
       if (r && r !== 'cancelled') showDialog('로그인하지 못했어요', r);
       next();
     });
-  }, [router]);
+  }, [router, linkingUrl]);
   return (
     <View className="flex-1 items-center justify-center bg-canvas">
       <ActivityIndicator color="#0B7A4D" />

@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -33,6 +33,7 @@ export default function RootLayout() {
 
   // 알림을 누르면 해당 화면으로, 앱을 켠 채 알림이 오면 알림함 새로고침
   const router = useRouter();
+  const handledNotifId = useRef<string | null>(null);
   useEffect(() => {
     if (Platform.OS === 'web' || !userId || !accountLoaded) return;
     // 알림을 누르면 알림함으로 (알림에 다른 경로가 지정돼 있으면 그쪽으로)
@@ -42,8 +43,14 @@ export default function RootLayout() {
       void queryClient.invalidateQueries({ queryKey: ['notifications'] });
     };
     const last = Notifications.getLastNotificationResponse();
-    if (last) open(last.notification.request.content.data);
-    const tap = Notifications.addNotificationResponseReceivedListener((r) => open(r.notification.request.content.data));
+    if (last && handledNotifId.current !== last.notification.request.identifier) {
+      handledNotifId.current = last.notification.request.identifier;
+      open(last.notification.request.content.data);
+    }
+    const tap = Notifications.addNotificationResponseReceivedListener((r) => {
+      handledNotifId.current = r.notification.request.identifier;
+      open(r.notification.request.content.data);
+    });
     const recv = Notifications.addNotificationReceivedListener(() => void queryClient.invalidateQueries({ queryKey: ['notifications'] }));
     return () => {
       tap.remove();
