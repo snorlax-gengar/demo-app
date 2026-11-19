@@ -25,7 +25,7 @@ export default function AuthCallback() {
       router.replace(s && !s.user.user_metadata?.terms_agreed_at ? '/complete-profile' : '/');
     };
     const url = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.href : null;
-    if (!url || !url.includes('#')) {
+    if (!url || (!url.includes('#') && !url.includes('code='))) {
       next();
       return;
     }

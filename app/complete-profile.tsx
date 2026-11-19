@@ -95,6 +95,14 @@ export default function CompleteProfileScreen() {
           className={`mt-6 items-center rounded-2xl py-4 active:opacity-80 ${valid && !busy ? 'bg-brand-600' : 'bg-brand-200'}`}>
           {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text className="text-base font-bold text-white">동의하고 시작하기</Text>}
         </Pressable>
+        {provider !== 'email' ? (
+          <View className="mt-5 rounded-2xl bg-surface px-4 py-3">
+            <Text className="text-xs leading-5 text-stone-500">
+              이미 이메일로 가입한 계정이 있으신가요? 아래 &apos;다른 계정으로 로그인&apos;에서 기존 계정으로 로그인한 뒤{' '}
+              <Text className="font-semibold text-ink">[내 정보 &gt; 간편 로그인 연결]</Text>에서 연결해 주세요.
+            </Text>
+          </View>
+        ) : null}
         <Pressable onPress={() => void signOut()} className="mt-4 items-center py-2">
           <Text className="text-sm font-semibold text-stone-500">다른 계정으로 로그인</Text>
         </Pressable>

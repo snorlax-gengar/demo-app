@@ -1,3 +1,4 @@
+import type { UserIdentity } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
@@ -75,8 +76,47 @@ export async function signInWithApple(): Promise<SocialResult> {
   return null;
 }
 
+/** 현재 로그인 계정에 연결된 로그인 수단 목록 (이메일 · 카카오 · 구글 · 애플) */
+export async function getLinkedIdentities(): Promise<UserIdentity[]> {
+  const { data, error } = await supabase.auth.getUserIdentities();
+  if (!error && data?.identities) return data.identities;
+  const { data: u } = await supabase.auth.getUser();
+  return u.user?.identities ?? [];
+}
+
+/** 기존 로그인 계정에 카카오·구글·애플 소셜 계정을 추가 연결 (Supabase 'Enable Manual Linking' 필요) */
+export async function linkSocialAccount(provider: SocialProvider): Promise<SocialResult> {
+  const redirectTo = authRedirect('/auth-callback');
+  const { data, error } = await supabase.auth.linkIdentity({
+    provider,
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+      ...(provider === 'google' ? { queryParams: { prompt: 'select_account' } } : {}),
+    },
+  });
+  if (error || !data?.url) return friendlyError(error?.message ?? '연결을 시작하지 못했어요.');
+
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  if (result.type !== 'success') return 'cancelled';
+  const done = await finishFromUrl(result.url);
+  if (!done) await supabase.auth.refreshSession().catch(() => {});
+  return done;
+}
+
+/** 연결된 소셜 로그인 수단 해제 (최소 1개 로그인 수단이 남아 있어야 가능) */
+export async function unlinkSocialAccount(identity: UserIdentity): Promise<string | null> {
+  const { error } = await supabase.auth.unlinkIdentity(identity);
+  if (error) return friendlyError(error.message);
+  await supabase.auth.refreshSession().catch(() => {});
+  return null;
+}
+
 function friendlyError(message: string): string {
   if (/provider is not enabled|Unsupported provider/i.test(message)) return '아직 준비 중인 로그인 방법이에요. 이메일로 로그인해 주세요.';
+  if (/manual linking is disabled/i.test(message)) return '서버에서 간편 로그인 연결 설정(Enable Manual Linking)이 아직 켜지지 않았어요.';
+  if (/identity_already_exists|already linked|already exists/i.test(message)) return '이미 다른 PIQ 계정에 연결된 소셜 계정이에요.';
+  if (/at least 2 identities|last identity/i.test(message)) return '로그인 수단은 최소 1개 이상 남아 있어야 해제할 수 있어요.';
   if (/access_denied|cancel/i.test(message)) return 'cancelled';
   if (/banned|deleted/i.test(message)) return '탈퇴한 계정입니다. 새로 가입해 주세요.';
   return message;

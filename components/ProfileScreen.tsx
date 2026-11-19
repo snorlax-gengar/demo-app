@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import type { UserIdentity } from '@supabase/supabase-js';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
 
 import { Screen } from '@/components/ui';
 import {
@@ -16,7 +17,16 @@ import { useStudio } from '@/hooks/useStudio';
 import { dayjs, formatDate } from '@/lib/date';
 import { showDialog } from '@/lib/dialog';
 import { ROLE_LABEL, formatWon } from '@/lib/labels';
+import {
+  SOCIAL_LABEL,
+  getLinkedIdentities,
+  linkSocialAccount,
+  unlinkSocialAccount,
+  type SocialProvider,
+} from '@/lib/socialAuth';
 import { useAuthStore } from '@/stores/auth';
+
+const GOOGLE_G = require('../assets/images/social/google-g.png');
 
 /** 회원/직원 공용 '내 정보': 현재 스튜디오, 초대 코드(원장·관리자), 스튜디오 전환·추가, 로그아웃 */
 export function ProfileScreen() {
@@ -382,6 +392,9 @@ export function ProfileScreen() {
           ))}
         </View>
 
+        {/* 간편 로그인 연결 */}
+        <SocialLinkSection />
+
         <Pressable
           onPress={confirmSignOut}
           className="mt-6 items-center rounded-2xl border border-stone-300 bg-white py-4 active:opacity-80">
@@ -403,5 +416,130 @@ export function ProfileScreen() {
       </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
+  );
+}
+
+const LINK_PROVIDERS: SocialProvider[] = ['kakao', 'google', 'apple'];
+
+/** 내 계정에 카카오·구글 등 간편 로그인 수단 연결/해제 */
+function SocialLinkSection() {
+  const session = useAuthStore((s) => s.session);
+  const [identities, setIdentities] = useState<UserIdentity[]>(() => session?.user.identities ?? []);
+  const [busy, setBusy] = useState<SocialProvider | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void getLinkedIdentities().then((list) => {
+      if (alive) setIdentities(list);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [session?.user.id]);
+
+  const byProvider = (p: SocialProvider) => identities.find((i) => i.provider === p);
+  const canUnlink = identities.length > 1;
+
+  const onLink = async (provider: SocialProvider) => {
+    if (busy) return;
+    setBusy(provider);
+    const err = await linkSocialAccount(provider);
+    if (!err) {
+      const next = await getLinkedIdentities();
+      setIdentities(next);
+      showDialog('연결했어요', `${SOCIAL_LABEL[provider]} 계정으로 바로 로그인할 수 있습니다.`);
+    } else if (err !== 'cancelled') {
+      showDialog('연결하지 못했어요', err);
+    }
+    setBusy(null);
+  };
+
+  const onUnlink = (provider: SocialProvider, identity: UserIdentity) => {
+    if (busy) return;
+    showDialog(
+      `${SOCIAL_LABEL[provider]} 연결 해제`,
+      `이 계정에서 ${SOCIAL_LABEL[provider]} 간편 로그인을 해제할까요? 다른 로그인 수단으로 계속 이용할 수 있습니다.`,
+      [
+        { text: '닫기', style: 'cancel' },
+        {
+          text: '해제',
+          style: 'destructive',
+          onPress: async () => {
+            setBusy(provider);
+            const err = await unlinkSocialAccount(identity);
+            if (!err) {
+              const next = await getLinkedIdentities();
+              setIdentities(next);
+            } else {
+              showDialog('해제하지 못했어요', err);
+            }
+            setBusy(null);
+          },
+        },
+      ],
+    );
+  };
+
+  return (
+    <>
+      <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">간편 로그인 연결</Text>
+      <View className="rounded-3xl bg-surface px-5">
+        {LINK_PROVIDERS.map((provider, index) => {
+          const linked = byProvider(provider);
+          const loading = busy === provider;
+          return (
+            <View
+              key={provider}
+              className={`flex-row items-center py-3.5 ${index > 0 ? 'border-t border-stone-100' : ''}`}>
+              <View
+                className={`h-8 w-8 items-center justify-center rounded-full ${
+                  provider === 'kakao' ? 'bg-[#FEE500]' : provider === 'apple' ? 'bg-black' : 'border border-stone-200 bg-white'
+                }`}>
+                {provider === 'google' ? (
+                  <Image source={GOOGLE_G} style={{ width: 15, height: 15 }} accessibilityIgnoresInvertColors />
+                ) : (
+                  <Ionicons
+                    name={provider === 'kakao' ? 'chatbubble' : 'logo-apple'}
+                    size={provider === 'apple' ? 16 : 14}
+                    color={provider === 'kakao' ? '#191919' : '#FFFFFF'}
+                  />
+                )}
+              </View>
+              <View className="ml-3 flex-1">
+                <Text className="text-sm font-semibold text-ink">{SOCIAL_LABEL[provider]}</Text>
+                <Text className={`text-xs ${linked ? 'text-brand-600' : 'text-stone-400'}`}>
+                  {linked ? '연결됨' : '연결 안 됨'}
+                </Text>
+              </View>
+              {loading ? (
+                <ActivityIndicator size="small" color="#0B7A4D" />
+              ) : linked ? (
+                canUnlink ? (
+                  <Pressable
+                    onPress={() => onUnlink(provider, linked)}
+                    disabled={!!busy}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${SOCIAL_LABEL[provider]} 연결 해제`}
+                    className="rounded-full border border-stone-300 bg-white px-3 py-1.5 active:opacity-70">
+                    <Text className="text-xs font-semibold text-stone-600">해제</Text>
+                  </Pressable>
+                ) : (
+                  <Text className="text-xs text-stone-400">기본 수단</Text>
+                )
+              ) : (
+                <Pressable
+                  onPress={() => void onLink(provider)}
+                  disabled={!!busy}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${SOCIAL_LABEL[provider]} 연결하기`}
+                  className="rounded-full bg-brand-600 px-3.5 py-1.5 active:opacity-80">
+                  <Text className="text-xs font-semibold text-white">연결</Text>
+                </Pressable>
+              )}
+            </View>
+          );
+        })}
+      </View>
+    </>
   );
 }

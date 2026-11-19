@@ -37,5 +37,10 @@ https://rmzorwkithybhiqnaqjl.supabase.co/auth/v1/callback
 이메일 주소가 같고 확인된 경우 Supabase 가 한 계정으로 자동 연결합니다(예: 이메일 가입 후 같은 주소의 구글로 로그인).
 애플에서 "이메일 가리기"를 고르면 별도 주소가 오므로 다른 계정이 됩니다.
 
+## 4. 기존 계정에 간편 로그인 추가 연결 (`내 정보 → 간편 로그인 연결`)
+- Supabase → Authentication → **Settings(또는 Sign In / Providers)** → **Enable Manual Linking** ON
+- 이메일이 달라도 현재 로그인된 계정에 카카오·구글·애플을 연결/해제할 수 있습니다(마지막 1개 수단은 해제 불가).
+- **애플 사후 연결**까지 쓰려면 Apple Developer 에서 **Services ID**(예: `com.gengarileo.piq.web`, Return URL = 위 공통 콜백 주소)와 **Sign in with Apple 키(`.p8`)**를 만들어 Supabase Apple 설정의 Client IDs·Secret Key 에 추가하세요.
+
 ## 확인 방법
 개발 빌드(`npx eas-cli build --profile development --platform ios`)를 설치 → 로그인 화면에서 각 버튼 → 처음이면 "거의 다 됐어요"(이름·약관) → 스튜디오 참여 화면.
