@@ -115,6 +115,10 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         body: `· 책임자: ${I.privacyOfficer}\n· 연락처: ${I.email}\n· 운영자: ${I.operator} (대표 ${I.representative}, 사업자등록번호 ${I.businessNumber}, ${I.address})\n개인정보 침해 신고·상담은 개인정보침해신고센터(privacy.kisa.or.kr, 국번 없이 118)에도 할 수 있습니다.`,
       },
       {
+        heading: '8-1. 간편 로그인으로 받는 정보 (Google·카카오·Apple)',
+        body: '· Google 로그인을 고르면 Google 계정의 이름, 이메일 주소, 프로필 사진(공개 프로필)만 받습니다. Google 드라이브·Gmail·연락처 등 다른 Google 데이터에는 접근하지 않습니다.\n· 받은 정보는 회원 식별과 로그인, 스튜디오 명단에 보일 이름 표시에만 쓰며, 광고·판매·AI 학습 등 다른 목적으로 쓰거나 제3자에게 넘기지 않습니다(제4항의 소속 스튜디오 직원 열람 제외).\n· 정보는 제5항의 서버(Supabase)에 암호화된 연결로 저장되며, 탈퇴하면 제3항에 따라 지체 없이 삭제됩니다. Google 계정 설정(myaccount.google.com/permissions)에서 PIQ 연결을 끊을 수도 있습니다.\n· 카카오·Apple 로그인도 같은 원칙으로 각 서비스가 제공하는 이름·이메일·프로필 사진만 받습니다.\n· PIQ 의 Google 사용자 데이터 사용은 Google API 서비스 사용자 데이터 정책(제한적 사용 요구사항 포함)을 따릅니다.',
+      },
+      {
         heading: '9. 방침 변경',
         body: `이 방침은 ${I.effectiveDate}부터 적용되며, 바뀌면 시행 7일 전부터 앱에 알립니다.`,
       },
