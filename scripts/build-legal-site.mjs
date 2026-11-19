@@ -19,7 +19,7 @@ const page = (title, body) => `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" type="image/png" href="favicon.png">
 <meta name="description" content="PIQ — 필라테스·요가·레슨 스튜디오의 수업 예약과 수강권 관리 앱">${VERIFY}
-<title>${esc(title)} · ${esc(LEGAL_INFO.appName)}</title>
+<title>${title === LEGAL_INFO.appName ? esc(title) : `${esc(title)} · ${esc(LEGAL_INFO.appName)}`}</title>
 <style>
 body{margin:0;background:#FFFFFF;color:#2F3842;font:16px/1.7 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
 main{max-width:720px;margin:0 auto;padding:40px 20px 64px}

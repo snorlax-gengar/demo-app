@@ -89,7 +89,9 @@ check('TC-R09', '스토어 제출용 공개 웹페이지(처리방침·계정 �
   const missing = need.filter((f) => !have.includes(f));
   if (missing.length) return ['fail', `없음: ${missing.join(', ')} — node --experimental-strip-types scripts/build-legal-site.mjs`];
   const del = fs.readFileSync(path.join(dir, 'delete-account.html'), 'utf8');
-  return [del.includes('회원 탈퇴') ? 'warn' : 'fail', `파일 ${need.length}개 생성됨 · 아직 인터넷에 올리지 않음(호스팅 후 URL 필요)`];
+  const site = (read('lib/legal.ts').match(/siteUrl: '([^']+)'/) ?? [])[1];
+  if (!del.includes('회원 탈퇴')) return ['fail', 'delete-account.html 에 탈퇴 안내 없음'];
+  return site ? ['ok', `파일 ${need.length}개 · 공개 주소 ${site} (2026-11-19 배포 확인: /, /privacy.html, /terms.html, /delete-account.html 200)`] : ['warn', `파일 ${need.length}개 생성됨 · 아직 인터넷에 올리지 않음`];
 });
 
 check('TC-R10', '간편 로그인(카카오·애플·구글) 앱 설정', 'iOS 애플 로그인 권한(usesAppleSignIn)·플러그인, 앱 주소 스킴, 공급자 키 입력은 대시보드에서', () => {

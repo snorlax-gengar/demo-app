@@ -2,6 +2,7 @@
 // [대괄호] 부분은 운영자 정보가 정해지면 채운다 (LEGAL_INFO 만 바꾸면 두 문서에 모두 반영)
 export const LEGAL_INFO = {
   appName: 'PIQ',
+  siteUrl: 'https://piq.expo.app', // 공개 페이지(EAS Hosting): 처리방침·약관·계정 삭제
   operator: '[운영자명(상호)]',
   representative: '[대표자명]',
   businessNumber: '[사업자등록번호]',
