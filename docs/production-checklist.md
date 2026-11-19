@@ -22,6 +22,14 @@
 ## 3. Supabase — 요금제
 - [ ] 무료 플랜은 **1주일 동안 사용이 없으면 프로젝트가 일시정지**되고 백업이 없습니다. 실제 스튜디오가 쓰기 시작하면 Pro 플랜(일시정지 없음, 매일 백업 7일 보관)을 권장합니다.
 
+## 3-1. Expo 프로젝트를 piq-app 으로 새로 연결 (2026-11-19)
+slug 를 `studio-app` → `piq-app` 으로 바꾸면서 Expo 프로젝트도 새로 만듭니다(기존 projectId 는 studio-app 에 묶여 있어 그대로 두면 EAS 명령이 'slug 불일치'로 멈춤).
+1. `npx eas-cli init` → "@gengarileo/piq-app 만들까요?" 에 Yes → app.json 에 새 projectId 가 들어감 (커밋)
+2. Supabase SQL Editor 에서 `delete from public.push_tokens;` — 예전 프로젝트로 받은 알림 토큰 정리
+   (예전·새 프로젝트 토큰이 한 번에 섞여 발송되면 Expo 가 그 묶음을 거절함. 앱을 다시 열면 새 토큰이 자동 등록됨)
+3. 개발 빌드 다시 만들기 (projectId 가 앱 안에 들어가므로 필수)
+4. EAS 환경 변수·웹 배포는 새 프로젝트에서 진행
+
 ## 4. EAS(Expo) — 빌드 환경 변수
 배포 빌드는 PC 의 `.env` 를 쓰지 않습니다. 값이 없으면 앱이 "앱 설정이 필요합니다" 화면만 보여줍니다.
 ```bash

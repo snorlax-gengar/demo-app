@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "PIQ",
-    "slug": "studio-app",
+    "slug": "piq-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -51,11 +51,6 @@
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "extra": {
-      "eas": {
-        "projectId": "6a033c4a-2f87-4a65-b450-d6dc094749b4"
-      }
     },
     "owner": "gengarileo"
   }
