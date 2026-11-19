@@ -315,7 +315,7 @@ create trigger classes_validate
   before insert or update on public.classes
   for each row execute function public.validate_class();
 
--- 3-5. 정원 변경 가드: 예약 인원보다 작게 줄이기 / 예약이 있는데 1:1 ↔ 그룹 전환 / 폐강 취소 금지
+-- 3-5. 수업 수정 가드: 폐강 수업 수정/복구 금지, 시작된 수업 변경 금지, 과거 시간 변경 금지, 정원/유형 전환 가드
 create or replace function public.guard_class_update()
 returns trigger
 language plpgsql security definer set search_path = public
@@ -324,8 +324,28 @@ declare
   v_seated int;
   v_active int;
 begin
-  if old.status = 'cancelled' and new.status = 'scheduled' then
-    raise exception '폐강된 수업은 되살릴 수 없습니다. 새로 등록해 주세요.';
+  if old.status = 'cancelled' then
+    if new.status = 'scheduled' then
+      raise exception '폐강된 수업은 되살릴 수 없습니다. 새로 등록해 주세요.';
+    end if;
+    raise exception '폐강된 수업은 수정할 수 없습니다.';
+  end if;
+
+  -- 로그인 사용자의 일반 수정일 때만 시작 여부·과거 시간 검사 (관리자/마이그레이션용 service_role 은 예외)
+  if auth.uid() is not null and new.status = 'scheduled' then
+    if old.starts_at <= now() and (
+      new.starts_at is distinct from old.starts_at
+      or new.ends_at is distinct from old.ends_at
+      or new.instructor_id is distinct from old.instructor_id
+      or new.max_capacity is distinct from old.max_capacity
+    ) then
+      raise exception '이미 시작된 수업은 시간·강사·정원을 바꿀 수 없습니다.';
+    end if;
+
+    if (new.starts_at is distinct from old.starts_at or new.ends_at is distinct from old.ends_at)
+       and new.starts_at <= now() then
+      raise exception '이미 지난 시간으로는 변경할 수 없습니다.';
+    end if;
   end if;
 
   if new.max_capacity is distinct from old.max_capacity then
@@ -1248,7 +1268,8 @@ grant update (name)                  on public.studios        to authenticated;
 grant select                         on public.studio_members to authenticated;
 grant update (memo)                  on public.studio_members to authenticated;
 grant select                         on public.passes         to authenticated;
-grant select, insert, update         on public.classes        to authenticated;
+grant select, insert                 on public.classes        to authenticated;
+grant update (title, instructor_id, starts_at, ends_at, max_capacity, location) on public.classes to authenticated;
 grant select                         on public.bookings       to authenticated;
 grant select                         on public.pass_logs      to authenticated;
 grant select                         on public.pass_payments  to authenticated;

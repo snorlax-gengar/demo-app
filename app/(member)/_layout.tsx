@@ -11,21 +11,21 @@ export default function MemberTabsLayout() {
         name="index"
         options={{
           title: '홈',
-          tabBarIcon: tabIcon('home-outline'),
+          tabBarIcon: tabIcon('home-outline', 'home'),
         }}
       />
       <Tabs.Screen
         name="schedule"
         options={{
           title: '시간표',
-          tabBarIcon: tabIcon('calendar-outline'),
+          tabBarIcon: tabIcon('calendar-outline', 'calendar'),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: '내 정보',
-          tabBarIcon: tabIcon('person-outline'),
+          tabBarIcon: tabIcon('person-outline', 'person'),
         }}
       />
     </Tabs>

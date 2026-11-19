@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 
 import { ClassCard } from '@/components/ClassCard';
 import { BRAND, EmptyView, ErrorView, LoadingView, Screen } from '@/components/ui';
@@ -23,6 +23,7 @@ export default function MemberScheduleScreen() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(dayjs()));
   const [selectedDay, setSelectedDay] = useState(() => dayjs().startOf('day'));
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [instructorFilter, setInstructorFilter] = useState<string>('all');
 
   const { studioId } = useStudio();
   const classesQuery = useWeekClasses(studioId, weekStart);
@@ -32,6 +33,20 @@ export default function MemberScheduleScreen() {
   const days = useMemo(() => weekDays(weekStart), [weekStart]);
   const today = dayjs().startOf('day');
   const isCurrentWeek = weekStart.isSame(startOfWeek(dayjs()), 'day');
+
+  // 이번 주 수업에 배정된 강사 목록 (2명 이상일 때만 강사 필터 표시)
+  const instructors = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const cls of classesQuery.data ?? []) {
+      if (cls.instructor_id && cls.instructor_name) map.set(cls.instructor_id, cls.instructor_name);
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  }, [classesQuery.data]);
+
+  const activeInstructor =
+    instructorFilter === 'all' || instructors.some((i) => i.id === instructorFilter) ? instructorFilter : 'all';
 
   // 요일별로 묶기: { 'YYYY-MM-DD': ClassOverview[] }
   const classesByDay = useMemo(() => {
@@ -45,8 +60,12 @@ export default function MemberScheduleScreen() {
 
   const dayClasses = useMemo(() => {
     const list = classesByDay[selectedDay.format('YYYY-MM-DD')] ?? [];
-    return typeFilter === 'all' ? list : list.filter((cls) => cls.class_type === typeFilter);
-  }, [classesByDay, selectedDay, typeFilter]);
+    return list.filter(
+      (cls) =>
+        (typeFilter === 'all' || cls.class_type === typeFilter) &&
+        (activeInstructor === 'all' || cls.instructor_id === activeInstructor),
+    );
+  }, [classesByDay, selectedDay, typeFilter, activeInstructor]);
 
   const moveWeek = (offset: number) => {
     const next = weekStart.add(offset * 7, 'day');
@@ -137,6 +156,41 @@ export default function MemberScheduleScreen() {
           );
         })}
       </View>
+
+      {/* ── 강사 필터 (강사가 2명 이상일 때만 표시) ── */}
+      {instructors.length > 1 ? (
+        <View className="mt-2.5">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 6 }}>
+            <Pressable
+              onPress={() => setInstructorFilter('all')}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeInstructor === 'all' }}
+              className={`rounded-full px-3.5 py-1.5 ${activeInstructor === 'all' ? 'bg-brand-600' : 'bg-surface'}`}>
+              <Text className={`text-xs font-semibold ${activeInstructor === 'all' ? 'text-white' : 'text-stone-500'}`}>
+                전체 강사
+              </Text>
+            </Pressable>
+            {instructors.map((inst) => {
+              const active = activeInstructor === inst.id;
+              return (
+                <Pressable
+                  key={inst.id}
+                  onPress={() => setInstructorFilter(inst.id)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                  className={`rounded-full px-3.5 py-1.5 ${active ? 'bg-brand-600' : 'bg-surface'}`}>
+                  <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-stone-600'}`}>
+                    {inst.name} 강사
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
 
       {/* ── 선택한 날의 수업 ── */}
       {classesQuery.isLoading ? (

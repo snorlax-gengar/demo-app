@@ -40,7 +40,7 @@ export function ClassCard({ cls, busy, onBook, onCancel, dateLabel }: Props) {
   const myStatus = cls.my_booking_status;
 
   return (
-    <View className={`rounded-2xl bg-white p-4 ${myStatus ? 'border border-brand-200' : 'border border-transparent'}`}>
+    <View className={`rounded-2xl bg-surface p-4 ${myStatus ? 'border border-brand-200' : 'border border-transparent'}`}>
       <View className="flex-row items-start justify-between">
         <View className="flex-1 pr-3">
           {dateLabel ? <Text className="mb-0.5 text-xs font-semibold text-brand-600">{dateLabel}</Text> : null}

@@ -198,8 +198,23 @@ http.createServer(async (req, res) => {
     if (table.startsWith('rpc/')) return send(200, { id: args.p_booking_id ?? 'nb', status: args.p_status ?? 'confirmed', pass_refunded: true });
 
     if (table === 'users') {
-      if (req.method === 'PATCH') { const u = Object.values(users).find((x) => x.id === eq(q.id)); if (u && args.name) u.name = args.name; rpcLog.push({ fn: 'users_update', args: { id: eq(q.id), ...args } }); return send(204, null); }
+      if (req.method === 'PATCH') {
+        const u = Object.values(users).find((x) => x.id === eq(q.id));
+        if (u && args.name !== undefined) u.name = args.name;
+        if (u && args.phone !== undefined) u.phone = args.phone;
+        rpcLog.push({ fn: 'users_update', args: { id: eq(q.id), ...args } });
+        return send(204, null);
+      }
       return out([profileOf(eq(q.id))].filter(Boolean));
+    }
+    if (table === 'studios') {
+      if (req.method === 'PATCH') {
+        const s = studios[eq(q.id)];
+        if (s && args.name) s.name = args.name;
+        rpcLog.push({ fn: 'studios_update', args: { id: eq(q.id), ...args } });
+        return send(204, null);
+      }
+      return out(Object.values(studios).filter((s) => !q.id || s.id === eq(q.id)));
     }
     if (table === 'studio_members') {
       if (req.method === 'PATCH') { const m = members.find((x) => x.studio_id === eq(q.studio_id) && x.user_id === eq(q.user_id)); m.memo = args.memo; return send(204, null); }
@@ -243,16 +258,30 @@ http.createServer(async (req, res) => {
     }
     if (table === 'classes') {
       if (req.method === 'POST') return send(201, []);
+      if (req.method === 'PATCH') {
+        const c = timeline.find((x) => x.id === eq(q.id));
+        if (c) {
+          Object.assign(c, args);
+          if (args.instructor_id) {
+            const p = profileOf(args.instructor_id);
+            if (p) c.instructor = { id: p.id, name: p.name };
+          }
+        }
+        rpcLog.push({ fn: 'classes_update', args: { id: eq(q.id), ...args } });
+        return send(204, null);
+      }
       if (q.id) return out(timeline.filter((c) => c.id === eq(q.id)));
       return out(timeline.filter((c) => c.studio_id === eq(q.studio_id) && (!q.instructor_id || c.instructor_id === eq(q.instructor_id))));
     }
     if (table === 'bookings') {
-      // 회원 상세: 김하늘(m1)의 다가오는 예약 2건 — 박서연(t1) 수업 1건, 이도윤(a1) 수업 1건
+      // 회원 상세 및 회원 본인 이력: 김하늘(m1)의 다가오는 예약 2건 + 지난 이력 2건
       if (eq(q.member_id) !== 'm1') return out([]);
       const cls = (id, title, day, hour, instr) => ({ id, title, starts_at: at(day, hour), ends_at: at(day, hour, 50), max_capacity: 4, class_type: 'group', instructor_id: instr[0], instructor: { name: instr[1] } });
       return out([
         { id: 'mb1', status: 'confirmed', pass_id: 'p2', pass_refunded: false, promoted_at: null, cancelled_at: null, created_at: '2026-11-17T01:00:00Z', class: cls('k1', '박서연 강사 그룹', 2, 19, ['t1', '박서연']) },
         { id: 'mb2', status: 'confirmed', pass_id: 'p2', pass_refunded: false, promoted_at: null, cancelled_at: null, created_at: '2026-11-17T02:00:00Z', class: cls('k2', '이도윤 원장 그룹', 3, 20, ['a1', '이도윤']) },
+        { id: 'mb3', status: 'attended', pass_id: 'p2', pass_refunded: false, promoted_at: null, cancelled_at: null, created_at: '2026-11-12T01:00:00Z', class: cls('k3', '4:1 그룹 리포머', -3, 19, ['t1', '박서연']) },
+        { id: 'mb4', status: 'cancelled', pass_id: 'p2', pass_refunded: true, promoted_at: null, cancelled_at: '2026-11-10T01:00:00Z', created_at: '2026-11-09T01:00:00Z', class: cls('k4', '4:1 그룹 리포머', -5, 10, ['a1', '이도윤']) },
       ]);
     }
     return out([]);

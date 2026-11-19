@@ -200,7 +200,13 @@ export default function PassProductEditScreen() {
                 <Text className="text-base text-ink">발급 화면에 보이기</Text>
                 <Text className="mt-0.5 text-xs text-stone-400">끄면 숨김 처리됩니다. 언제든 다시 켤 수 있어요.</Text>
               </View>
-              <Switch value={active} onValueChange={setActive} accessibilityLabel="발급 화면에 보이기" trackColor={{ true: '#0B7A4D' }} />
+              <Switch
+                value={active}
+                onValueChange={setActive}
+                accessibilityLabel="발급 화면에 보이기"
+                trackColor={{ true: '#0B7A4D', false: '#D6D3D1' }}
+                thumbColor="#FFFFFF"
+              />
             </View>
           ) : null}
         </ScrollView>

@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 
+import { DateField } from '@/components/DatePickerModal';
 import { PassCard } from '@/components/PassCard';
 import { BRAND, ErrorView, LoadingView, Screen } from '@/components/ui';
 import { useAddPayment, useAdjustPass, useExtendPass, usePassDetail, useSetPassActive } from '@/hooks/queries';
@@ -316,23 +317,14 @@ function PaymentForm({ passId, isOwner }: { passId: string; isOwner: boolean }) 
       </View>
       <View className="mt-2 flex-row items-center justify-between rounded-xl bg-stone-100 px-3 py-2">
         <Text className="text-sm text-ink">결제일</Text>
-        <View className="flex-row items-center">
-          <Pressable
-            onPress={() => setPaidOn((d) => d.subtract(1, 'day'))}
-            disabled={!paidOn.isAfter(today.subtract(365, 'day'))}
-            accessibilityLabel="결제일 하루 전"
-            className="h-8 w-8 items-center justify-center rounded-full bg-surface active:opacity-70">
-            <Ionicons name="remove" size={16} color="#44403C" />
-          </Pressable>
-          <Text className="mx-2 text-sm font-bold text-ink">{formatDate(paidOn.toISOString())}</Text>
-          <Pressable
-            onPress={() => setPaidOn((d) => d.add(1, 'day'))}
-            disabled={!paidOn.isBefore(today)}
-            accessibilityLabel="결제일 하루 뒤"
-            className={`h-8 w-8 items-center justify-center rounded-full bg-surface active:opacity-70 ${paidOn.isBefore(today) ? '' : 'opacity-30'}`}>
-            <Ionicons name="add" size={16} color="#44403C" />
-          </Pressable>
-        </View>
+        <DateField
+          value={paidOn}
+          label={formatDate(paidOn.toISOString())}
+          onChange={setPaidOn}
+          minDate={today.subtract(365, 'day')}
+          maxDate={today}
+          modalTitle="결제일 선택"
+        />
       </View>
       <TextInput
         value={memo}

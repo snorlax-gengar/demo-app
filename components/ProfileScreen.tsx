@@ -1,10 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
 
 import { Screen } from '@/components/ui';
-import { useNotifications, useRegenerateInviteCode, useRevenue } from '@/hooks/queries';
+import {
+  useNotifications,
+  useRegenerateInviteCode,
+  useRevenue,
+  useUpdateProfile,
+  useUpdateStudioName,
+} from '@/hooks/queries';
 import { PUSH_STATUS_TEXT, usePushStore } from '@/lib/push';
 import { useStudio } from '@/hooks/useStudio';
 import { dayjs, formatDate } from '@/lib/date';
@@ -25,8 +31,56 @@ export function ProfileScreen() {
   const pushStatus = usePushStore((s) => s.status);
   const revenue = useRevenue(studioId, thisMonth, isOwner);
   const regenerate = useRegenerateInviteCode();
+  const updateProfile = useUpdateProfile();
+  const updateStudioName = useUpdateStudioName();
+
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [phoneDraft, setPhoneDraft] = useState('');
+
+  const [editingStudio, setEditingStudio] = useState(false);
+  const [studioNameDraft, setStudioNameDraft] = useState('');
 
   if (!profile || !studio) return null;
+
+  const openProfileEdit = () => {
+    setNameDraft(profile.name ?? '');
+    setPhoneDraft(profile.phone ?? '');
+    setEditingProfile(true);
+  };
+
+  const saveProfile = () => {
+    if (!nameDraft.trim()) {
+      showDialog('이름을 입력해 주세요');
+      return;
+    }
+    updateProfile.mutate(
+      { name: nameDraft, phone: phoneDraft },
+      {
+        onSuccess: () => setEditingProfile(false),
+        onError: (error) => showDialog('저장할 수 없습니다', error.message),
+      },
+    );
+  };
+
+  const openStudioEdit = () => {
+    setStudioNameDraft(studio.name);
+    setEditingStudio(true);
+  };
+
+  const saveStudioName = () => {
+    if (!studioNameDraft.trim()) {
+      showDialog('스튜디오 이름을 입력해 주세요');
+      return;
+    }
+    updateStudioName.mutate(
+      { studioId, name: studioNameDraft },
+      {
+        onSuccess: () => setEditingStudio(false),
+        onError: (error) => showDialog('변경할 수 없습니다', error.message),
+      },
+    );
+  };
 
   const others = memberships.filter((m) => m.studio_id !== studioId);
 
@@ -74,20 +128,79 @@ export function ProfileScreen() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}>
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}>
         <Text className="text-2xl font-bold text-ink">내 정보</Text>
 
         {/* 프로필 */}
-        <View className="mt-5 flex-row items-center rounded-3xl bg-surface p-5">
-          <View className="h-14 w-14 items-center justify-center rounded-full bg-brand-100">
-            <Text className="text-xl font-bold text-brand-700">{profile.name.slice(0, 1) || '?'}</Text>
+        <View className="mt-5 rounded-3xl bg-surface p-5">
+          <View className="flex-row items-center">
+            <View className="h-14 w-14 items-center justify-center rounded-full bg-brand-100">
+              <Text className="text-xl font-bold text-brand-700">{profile.name.slice(0, 1) || '?'}</Text>
+            </View>
+            <View className="ml-4 flex-1">
+              <Text className="text-lg font-bold text-ink">{profile.name || '이름 없음'}</Text>
+              <Text className="mt-0.5 text-sm text-stone-500" numberOfLines={1}>
+                {studio.name} · <Text className="font-semibold text-brand-600">{role ? ROLE_LABEL[role] : ''}</Text>
+              </Text>
+            </View>
+            {!editingProfile ? (
+              <Pressable
+                onPress={openProfileEdit}
+                accessibilityRole="button"
+                accessibilityLabel="내 정보 수정"
+                hitSlop={6}
+                className="rounded-full bg-white px-3 py-1.5 active:opacity-70">
+                <Text className="text-xs font-semibold text-stone-600">수정</Text>
+              </Pressable>
+            ) : null}
           </View>
-          <View className="ml-4 flex-1">
-            <Text className="text-lg font-bold text-ink">{profile.name || '이름 없음'}</Text>
-            <Text className="mt-0.5 text-sm text-stone-500" numberOfLines={1}>
-              {studio.name} · <Text className="font-semibold text-brand-600">{role ? ROLE_LABEL[role] : ''}</Text>
-            </Text>
-          </View>
+
+          {editingProfile ? (
+            <View className="mt-4 border-t border-stone-200 pt-4">
+              <Text className="mb-1.5 text-xs font-semibold text-stone-600">이름</Text>
+              <TextInput
+                value={nameDraft}
+                onChangeText={setNameDraft}
+                placeholder="홍길동"
+                placeholderTextColor="#A8A29E"
+                maxLength={20}
+                textContentType="name"
+                accessibilityLabel="이름"
+                className="rounded-xl border border-stone-200 bg-white px-3.5 py-3 text-[15px] text-ink"
+              />
+              <Text className="mb-1.5 mt-3 text-xs font-semibold text-stone-600">연락처 (선택)</Text>
+              <TextInput
+                value={phoneDraft}
+                onChangeText={setPhoneDraft}
+                placeholder="010-0000-0000"
+                placeholderTextColor="#A8A29E"
+                maxLength={20}
+                keyboardType="phone-pad"
+                textContentType="telephoneNumber"
+                accessibilityLabel="연락처"
+                className="rounded-xl border border-stone-200 bg-white px-3.5 py-3 text-[15px] text-ink"
+              />
+              <View className="mt-3 flex-row justify-end gap-2">
+                <Pressable
+                  onPress={() => setEditingProfile(false)}
+                  disabled={updateProfile.isPending}
+                  className="rounded-full px-4 py-2 active:opacity-70">
+                  <Text className="text-sm font-semibold text-stone-500">취소</Text>
+                </Pressable>
+                <Pressable
+                  onPress={saveProfile}
+                  disabled={updateProfile.isPending}
+                  className="min-w-[64px] items-center rounded-full bg-brand-600 px-4 py-2 active:opacity-80">
+                  {updateProfile.isPending ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text className="text-sm font-semibold text-white">저장</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {/* 알림함 (모든 역할) */}
@@ -183,12 +296,55 @@ export function ProfileScreen() {
         {/* 내 스튜디오 */}
         <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">내 스튜디오</Text>
         <View className="rounded-3xl bg-surface px-5">
-          <View className="flex-row items-center py-4">
-            <Ionicons name="checkmark-circle" size={20} color="#0B7A4D" />
-            <Text className="ml-3 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
-              {studio.name}
-            </Text>
-            <Text className="text-sm text-stone-500">{role ? ROLE_LABEL[role] : ''} · 사용 중</Text>
+          <View className="py-4">
+            <View className="flex-row items-center">
+              <Ionicons name="checkmark-circle" size={20} color="#0B7A4D" />
+              <Text className="ml-3 flex-1 text-base font-semibold text-ink" numberOfLines={1}>
+                {studio.name}
+              </Text>
+              <Text className="text-sm text-stone-500">{role ? ROLE_LABEL[role] : ''} · 사용 중</Text>
+              {isAdmin && !editingStudio ? (
+                <Pressable
+                  onPress={openStudioEdit}
+                  accessibilityRole="button"
+                  accessibilityLabel="스튜디오 이름 변경"
+                  hitSlop={8}
+                  className="ml-2 p-1 active:opacity-60">
+                  <Ionicons name="create-outline" size={18} color="#78716C" />
+                </Pressable>
+              ) : null}
+            </View>
+            {editingStudio ? (
+              <View className="mt-3">
+                <TextInput
+                  value={studioNameDraft}
+                  onChangeText={setStudioNameDraft}
+                  placeholder="스튜디오 이름"
+                  placeholderTextColor="#A8A29E"
+                  maxLength={40}
+                  accessibilityLabel="스튜디오 이름"
+                  className="rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-[15px] text-ink"
+                />
+                <View className="mt-2.5 flex-row justify-end gap-2">
+                  <Pressable
+                    onPress={() => setEditingStudio(false)}
+                    disabled={updateStudioName.isPending}
+                    className="rounded-full px-4 py-1.5 active:opacity-70">
+                    <Text className="text-sm font-semibold text-stone-500">취소</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={saveStudioName}
+                    disabled={updateStudioName.isPending}
+                    className="min-w-[60px] items-center rounded-full bg-brand-600 px-4 py-1.5 active:opacity-80">
+                    {updateStudioName.isPending ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text className="text-sm font-semibold text-white">저장</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
           </View>
           {others.map((m) => (
             <Pressable
@@ -245,6 +401,7 @@ export function ProfileScreen() {
           </Pressable>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }

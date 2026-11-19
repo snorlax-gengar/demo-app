@@ -5,7 +5,9 @@
 
 ## 1. Supabase — DB·함수
 - [ ] SQL Editor 에서 `supabase/patches/012_withdraw_account.sql` 실행 (이미 했으면 다시 해도 안전)
+- [x] SQL Editor 에서 `supabase/patches/013_harden_class_updates.sql` 실행 (`classes` 열 단위 권한 제한 + 시작/폐강 수업 수정 가드, 2026-11-19 완료)
 - [x] `npx supabase@latest functions deploy delete-account --project-ref <ref> --use-api --no-verify-jwt` (2026-11-18 배포 확인, Verify JWT 끔)
+- [ ] Edge Functions → `send-push` Secrets 에 `PUSH_SECRET` 설정 및 DB `app_settings.send_push_secret` 동일 값 입력 (미설정 시 외부 무제한 호출 가능)
 - [ ] Database → Cron Jobs 에 `class-reminders`(매일 20:00) · `send-push-retry`(5분) 두 개가 있는지
 
 ## 2. Supabase — 로그인(Auth) 설정

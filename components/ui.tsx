@@ -7,10 +7,10 @@ export const BRAND = '#0B7A4D';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
-/** 하단 탭 아이콘: <Tabs.Screen options={{ tabBarIcon: tabIcon('home-outline') }} /> */
-export function tabIcon(name: IoniconName) {
-  return function TabIcon({ color, size }: { color: ColorValue; size: number }) {
-    return <Ionicons name={name} size={size} color={typeof color === 'string' ? color : BRAND} />;
+/** 하단 탭 아이콘: <Tabs.Screen options={{ tabBarIcon: tabIcon('home-outline', 'home') }} /> */
+export function tabIcon(name: IoniconName, activeName?: IoniconName) {
+  return function TabIcon({ color, size, focused }: { color: ColorValue; size: number; focused?: boolean }) {
+    return <Ionicons name={focused && activeName ? activeName : name} size={size} color={typeof color === 'string' ? color : BRAND} />;
   };
 }
 

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DateField } from '@/components/DatePickerModal';
 import { Chip, Choice, Field, Row, Stepper } from '@/components/form';
 import { ErrorView, LoadingView, Screen } from '@/components/ui';
 import { useIssuePass, useMemberDetail, usePassProducts } from '@/hooks/queries';
@@ -156,7 +157,7 @@ export default function IssuePassScreen() {
                         accessibilityRole="radio"
                         accessibilityState={{ selected: on }}
                         accessibilityLabel={`상품 ${p.name}`}
-                        className={`w-44 rounded-2xl border-2 px-3.5 py-3 ${on ? 'border-brand-600 bg-brand-50' : 'border-transparent bg-white'}`}>
+                        className={`w-44 rounded-2xl border-2 px-3.5 py-3 ${on ? 'border-brand-600 bg-brand-50' : 'border-transparent bg-surface'}`}>
                         <Text className={`text-sm font-bold ${on ? 'text-brand-700' : 'text-ink'}`} numberOfLines={1}>
                           {p.name}
                         </Text>
@@ -241,10 +242,11 @@ export default function IssuePassScreen() {
                   />
                 </Row>
                 <Row label="시작일" border>
-                  <Stepper
-                    value={formatDate(startsOn.toISOString())}
-                    onMinus={() => setStartsOn((d) => d.subtract(1, 'day'))}
-                    onPlus={() => setStartsOn((d) => d.add(1, 'day'))}
+                  <DateField
+                    value={startsOn}
+                    label={formatDate(startsOn.toISOString())}
+                    onChange={setStartsOn}
+                    modalTitle="수강권 시작일 선택"
                   />
                 </Row>
                 <Row label="만료일" border>

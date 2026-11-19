@@ -325,7 +325,7 @@ function AgendaRow({ cls, showInstructor, onPress }: { cls: ClassOverview; showI
     <Pressable
       onPress={onPress}
       className={`flex-row items-center rounded-2xl bg-surface p-3.5 active:opacity-70 ${past ? 'opacity-60' : ''}`}>
-      <View className={`mr-3 w-1 self-stretch rounded-full ${isPrivate ? 'bg-brand-700' : 'bg-brand-300'}`} />
+      <View className={`mr-3 w-1 self-stretch rounded-full ${isPrivate ? 'bg-brand-700' : 'bg-brand-400'}`} />
       <View className="flex-1 pr-2">
         <Text className="text-base font-bold text-ink">{formatTimeRange(cls.starts_at, cls.ends_at)}</Text>
         <Text className="mt-0.5 text-sm text-stone-600" numberOfLines={1}>

@@ -157,9 +157,17 @@ export default function ClassDetailScreen() {
                 </View>
               ) : null}
               <Pressable
+                onPress={() => router.push({ pathname: '/(admin)/class/edit', params: { id: cls.id } })}
+                accessibilityRole="button"
+                className={`flex-row items-center py-4 active:opacity-60 ${cls.class_type === 'group' ? 'border-t border-stone-100' : ''}`}>
+                <Ionicons name="create-outline" size={18} color="#0B7A4D" />
+                <Text className="ml-2 flex-1 text-base font-semibold text-ink">수업 정보 수정 (시간·장소·강사)</Text>
+                <Ionicons name="chevron-forward" size={18} color="#A8A29E" />
+              </Pressable>
+              <Pressable
                 onPress={confirmCancelClass}
                 disabled={cancelClass.isPending}
-                className={`flex-row items-center py-4 active:opacity-60 ${cls.class_type === 'group' ? 'border-t border-stone-100' : ''}`}>
+                className="flex-row items-center border-t border-stone-100 py-4 active:opacity-60">
                 <Ionicons name="trash-outline" size={18} color="#E11D48" />
                 <Text className="ml-2 text-base font-semibold text-rose-600">폐강 (예약자 수강권 복구)</Text>
               </Pressable>

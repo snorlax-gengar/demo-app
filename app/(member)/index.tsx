@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
@@ -56,7 +57,13 @@ export default function MemberHomeScreen() {
         {/* ── 다중 수강권 카드: 잔여 횟수와 만료일을 홈 최상단에서 바로 확인 ── */}
         <SectionTitle
           title="내 수강권"
-          right={passes.length > 1 ? <Text className="text-sm text-stone-400">{passes.length}장 · 옆으로 넘기기</Text> : null}
+          right={
+            passes.length > 0 ? (
+              <Text className="text-xs text-stone-400">
+                {passes.length > 1 ? `${passes.length}장 · 눌러서 내역 보기` : '눌러서 내역 보기'}
+              </Text>
+            ) : null
+          }
         />
         {passesQuery.isLoading ? (
           <LoadingView />
@@ -73,7 +80,15 @@ export default function MemberHomeScreen() {
             horizontal
             data={passes}
             keyExtractor={(pass) => pass.id}
-            renderItem={({ item }) => <PassCard pass={item} width={PASS_CARD_WIDTH} />}
+            renderItem={({ item }) => (
+              <Pressable
+                onPress={() => router.push({ pathname: '/my-pass/[id]', params: { id: item.id } })}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.name} 사용 내역 보기`}
+                className="active:opacity-85">
+                <PassCard pass={item} width={PASS_CARD_WIDTH} />
+              </Pressable>
+            )}
             ItemSeparatorComponent={() => <View style={{ width: PASS_CARD_GAP }} />}
             contentContainerStyle={{ paddingHorizontal: 20 }}
             showsHorizontalScrollIndicator={false}
@@ -115,6 +130,17 @@ export default function MemberHomeScreen() {
             ))}
           </View>
         )}
+
+        {/* ── 지난 수업 이력 바로가기 ── */}
+        <Pressable
+          onPress={() => router.push('/my-history')}
+          accessibilityRole="button"
+          accessibilityLabel="지난 수업 이력 보기"
+          className="mx-5 mt-5 flex-row items-center rounded-2xl bg-surface px-4 py-3.5 active:opacity-70">
+          <Ionicons name="time-outline" size={18} color="#0B7A4D" />
+          <Text className="ml-2.5 flex-1 text-sm font-semibold text-ink">지난 수업 · 출석 이력 보기</Text>
+          <Ionicons name="chevron-forward" size={18} color="#A8A29E" />
+        </Pressable>
 
         <Text className="mt-6 px-5 text-xs leading-5 text-stone-400">
           수업 시작 24시간 전까지 취소하면 수강권 횟수가 자동으로 복구됩니다. 24시간 이내 취소 또는 결석 시에는

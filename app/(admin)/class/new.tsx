@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DateField } from '@/components/DatePickerModal';
 import { Chip, Choice, Field, Row, Stepper } from '@/components/form';
 import { Screen } from '@/components/ui';
 import { useCreateClasses, useInstructors } from '@/hooks/queries';
@@ -156,11 +157,12 @@ export default function NewClassScreen() {
           <Field label="날짜와 시간">
             <View className="rounded-2xl bg-surface px-4">
               <Row label="날짜">
-                <Stepper
-                  value={formatDay(date)}
-                  onMinus={() => setDate((d) => d.subtract(1, 'day'))}
-                  onPlus={() => setDate((d) => d.add(1, 'day'))}
-                  minusDisabled={!date.isAfter(dayjs(), 'day')}
+                <DateField
+                  value={date}
+                  label={formatDay(date)}
+                  onChange={setDate}
+                  minDate={dayjs().startOf('day')}
+                  modalTitle="수업 날짜 선택"
                 />
               </Row>
               <Row label="시작" border>

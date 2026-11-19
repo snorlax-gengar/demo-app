@@ -114,6 +114,44 @@ export function useSetMemberRole() {
   });
 }
 
+/** 스튜디오 이름 변경 (원장·관리자) */
+export function useUpdateStudioName() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { studioId: string; name: string }) => {
+      const trimmed = vars.name.trim();
+      if (!trimmed) throw new Error('스튜디오 이름을 입력해 주세요.');
+      const { error } = await supabase.from('studios').update({ name: trimmed }).eq('id', vars.studioId);
+      if (error) throw toError(error);
+      await useAuthStore.getState().loadAccount();
+    },
+    onSettled: () => queryClient.invalidateQueries(),
+  });
+}
+
+/** 내 프로필(이름·연락처) 수정 */
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { name: string; phone: string }) => {
+      const userId = useAuthStore.getState().session?.user.id;
+      if (!userId) throw new Error('로그인이 필요합니다.');
+      const trimmedName = vars.name.trim();
+      if (!trimmedName) throw new Error('이름을 입력해 주세요.');
+      const trimmedPhone = vars.phone.trim() || null;
+      const { error } = await supabase
+        .from('users')
+        .update({ name: trimmedName, phone: trimmedPhone })
+        .eq('id', userId);
+      if (error) throw toError(error);
+      // Auth 메타데이터 이름도 함께 동기화 (실패해도 DB 저장은 이미 완료됨)
+      await supabase.auth.updateUser({ data: { name: trimmedName } }).catch(() => {});
+      await useAuthStore.getState().loadAccount();
+    },
+    onSettled: () => queryClient.invalidateQueries(),
+  });
+}
+
 /** 스튜디오가 회원에게 남기는 메모 (원장·관리자) */
 export function useUpdateMemberMemo() {
   const queryClient = useQueryClient();
@@ -197,6 +235,53 @@ export function useMyUpcomingClasses(studioId: string) {
         .order('starts_at', { ascending: true });
       if (error) throw toError(error);
       return (data ?? []) as ClassOverview[];
+    },
+  });
+}
+
+/** 회원 본인용: 이 스튜디오의 전체 예약·출석·노쇼·취소 이력 */
+export function useMyBookingHistory(studioId: string, memberId: string | undefined) {
+  return useQuery({
+    queryKey: ['my-bookings', studioId, memberId],
+    enabled: !!studioId && !!memberId,
+    queryFn: async (): Promise<MemberBooking[]> => {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(
+          `id, status, pass_id, pass_refunded, promoted_at, cancelled_at, created_at,
+           class:classes!bookings_class_id_fkey ( id, title, starts_at, ends_at, max_capacity, class_type, instructor_id )`,
+        )
+        .eq('studio_id', studioId)
+        .eq('member_id', memberId!)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw toError(error);
+      return (data ?? []) as unknown as MemberBooking[];
+    },
+  });
+}
+
+/** 회원 본인용: 내 수강권 1장 + 사용/복구/연장 변동 내역 */
+export function useMyPassDetail(passId: string | undefined) {
+  return useQuery({
+    queryKey: ['my-pass', passId],
+    enabled: !!passId,
+    queryFn: async (): Promise<{ pass: Pass; logs: Omit<PassDetail['logs'][number], 'actor'>[] }> => {
+      const [passRes, logsRes] = await Promise.all([
+        supabase.from('passes').select('*').eq('id', passId!).maybeSingle(),
+        supabase
+          .from('pass_logs')
+          .select('id, delta, remaining_after, reason, memo, created_at')
+          .eq('pass_id', passId!)
+          .order('id', { ascending: false }),
+      ]);
+      if (passRes.error) throw toError(passRes.error);
+      if (logsRes.error) throw toError(logsRes.error);
+      if (!passRes.data) throw new Error('수강권을 찾을 수 없습니다.');
+      return {
+        pass: passRes.data as Pass,
+        logs: (logsRes.data ?? []) as Omit<PassDetail['logs'][number], 'actor'>[],
+      };
     },
   });
 }
@@ -348,6 +433,34 @@ export function useUpdateCapacity() {
   return useMutation({
     mutationFn: async (vars: { classId: string; capacity: number }) => {
       const { error } = await supabase.from('classes').update({ max_capacity: vars.capacity }).eq('id', vars.classId);
+      if (error) throw toError(error);
+    },
+    onSettled: () => queryClient.invalidateQueries(),
+  });
+}
+
+/** 수업 정보 수정(제목·시간·장소·담당 강사). 시간 중복 및 권한은 DB 가 검사한다 */
+export function useUpdateClass() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      classId: string;
+      title: string;
+      starts_at: string;
+      ends_at: string;
+      instructor_id: string;
+      location: string | null;
+    }) => {
+      const { error } = await supabase
+        .from('classes')
+        .update({
+          title: vars.title,
+          starts_at: vars.starts_at,
+          ends_at: vars.ends_at,
+          instructor_id: vars.instructor_id,
+          location: vars.location,
+        })
+        .eq('id', vars.classId);
       if (error) throw toError(error);
     },
     onSettled: () => queryClient.invalidateQueries(),

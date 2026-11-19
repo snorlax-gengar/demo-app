@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Switch, Text, View } from 'react-native';
 
+import { NotificationBell } from '@/components/NotificationBell';
 import { ROLE_LABEL } from '@/lib/labels';
 import { classTiming, StaffClassCard, type AttendanceTarget } from '@/components/StaffClassCard';
 import { BRAND, EmptyView, ErrorView, LoadingView, Screen } from '@/components/ui';
@@ -65,7 +66,7 @@ export default function StaffTimelineScreen() {
           />
         }>
         {/* ── 헤더 + 날짜 이동 ── */}
-        <View className="flex-row items-center justify-between px-5 pt-4">
+        <View className="flex-row items-start justify-between px-5 pt-4">
           <View className="flex-1 pr-3">
             <Text className="text-sm text-stone-500">{studio?.name} · {profile?.name} {role ? ROLE_LABEL[role] : ''}님</Text>
             <Text className="mt-0.5 text-2xl font-bold text-ink">
@@ -73,6 +74,10 @@ export default function StaffTimelineScreen() {
               {viewingAll ? '전체 수업' : '내 수업'}
             </Text>
           </View>
+          <NotificationBell />
+        </View>
+        <View className="mt-2 flex-row items-center justify-between px-5">
+          <Text className="text-sm text-stone-500">{formatDay(day)}</Text>
           <View className="flex-row items-center gap-2">
             {!isToday ? (
               <Pressable
@@ -95,7 +100,6 @@ export default function StaffTimelineScreen() {
             </Pressable>
           </View>
         </View>
-        <Text className="mt-1 px-5 text-sm text-stone-500">{formatDay(day)}</Text>
 
         {/* ── 원장 전용: 전체 강사 보기 토글 ── */}
         {isAdmin ? (
@@ -109,7 +113,7 @@ export default function StaffTimelineScreen() {
             <Switch
               value={showAll}
               onValueChange={setShowAll}
-              trackColor={{ true: '#53FAA6', false: '#D6D3D1' }}
+              trackColor={{ true: '#0B7A4D', false: '#D6D3D1' }}
               thumbColor="#FFFFFF"
             />
           </View>

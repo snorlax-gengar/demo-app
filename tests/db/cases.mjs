@@ -209,7 +209,7 @@ await tc('TC-D14', '정원·폐강', '폐강하면 확정자는 복구, 대기�
   assert.equal((await lastLog(m1)).reason, 'class_cancelled');
   assert.equal(await status(w.id), 'cancelled');
   assert.equal(await status(b1.id), 'cancelled');
-  await rejects(rpc(P.owner, `update classes set status='scheduled' where id=$1`, [c.id]), /되살릴 수 없습니다/);
+  await rejects(rpc(P.owner, `update classes set status='scheduled' where id=$1`, [c.id]), /되살릴 수 없습니다|permission denied/);
   return `정리 ${n}건, 회원1 잔여 ${before}→${await rem(m1, 'group')}, 대기 취소, 되살리기 거절`;
 });
 

@@ -2,10 +2,11 @@
 //   통과(ok) / 확인 필요(warn: 출시 전에 채울 것) / 실패(fail: 빌드·심사에 바로 문제)
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
 import { createRequire } from 'node:module';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 const results = [];
 const check = (id, title, expected, fn) => {
@@ -75,11 +76,11 @@ check('TC-R07', '약관·개인정보 처리방침의 운영자 정보', '[자�
   return [holders.length ? 'warn' : 'ok', holders.length ? `남은 자리표시 ${holders.length}개: ${holders.join(' ')}` : '모두 채워짐'];
 });
 
-check('TC-R08', 'Edge Function 2개와 DB 패치가 모두 저장소에 있다', 'send-push·delete-account, 패치 005~012, schema.sql 에 탈퇴 함수 포함', () => {
+check('TC-R08', 'Edge Function 2개와 DB 패치가 모두 저장소에 있다', 'send-push·delete-account, 패치 005~013, schema.sql 에 탈퇴 함수 포함', () => {
   const fns = fs.readdirSync(path.join(root, 'supabase/functions'));
-  const patches = fs.readdirSync(path.join(root, 'supabase/patches')).filter((f) => /^0(0[5-9]|1[0-2])_/.test(f));
-  const ok = fns.includes('send-push') && fns.includes('delete-account') && patches.length === 8 && read('supabase/schema.sql').includes('withdraw_account');
-  return [ok ? 'ok' : 'fail', `함수 ${fns.join('·')}, 패치 ${patches.length}개(005~012)`];
+  const patches = fs.readdirSync(path.join(root, 'supabase/patches')).filter((f) => /^0(0[5-9]|1[0-3])_/.test(f));
+  const ok = fns.includes('send-push') && fns.includes('delete-account') && patches.length === 9 && read('supabase/schema.sql').includes('withdraw_account');
+  return [ok ? 'ok' : 'fail', `함수 ${fns.join('·')}, 패치 ${patches.length}개(005~013)`];
 });
 
 check('TC-R09', '스토어 제출용 공개 웹페이지(처리방침·계정 삭제 요청)가 준비돼 있다', 'public-site/privacy.html·delete-account.html·terms.html (호스팅 후 URL 을 스토어에 입력)', () => {

@@ -88,6 +88,8 @@ export default function RootLayout() {
             </Stack.Protected>
             <Stack.Protected guard={ready && hasStudio && role === 'member'}>
               <Stack.Screen name="(member)" />
+              <Stack.Screen name="my-pass/[id]" />
+              <Stack.Screen name="my-history" />
             </Stack.Protected>
             <Stack.Protected guard={ready && hasStudio && isStaffRole(role)}>
               <Stack.Screen name="(admin)" />

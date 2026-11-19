@@ -59,17 +59,17 @@ await tc('TC-S02', 'Supabase 기본 권한이 있어도 로그인하지 않은 �
   return `anon 권한 0개, ${denied}개 표·뷰 조회 모두 거절`;
 });
 
-await tc('TC-S03', '로그인 사용자의 직접 쓰기 권한은 의도한 곳뿐이다 (나머지는 함수로만 변경)', '표 단위 쓰기: classes(추가·수정)만 / 열 단위 수정: pass_products(상품 정보)·users(name,phone)·studios(name)·studio_members(memo)', async () => {
+await tc('TC-S03', '로그인 사용자의 직접 쓰기 권한은 의도한 곳뿐이다 (나머지는 함수로만 변경)', '표 단위 쓰기: classes(추가)만 / 열 단위 수정: classes(6개 열, status 제외)·pass_products(상품 정보)·users(name,phone)·studios(name)·studio_members(memo)', async () => {
   const t = await q(`select table_name, string_agg(privilege_type, ',' order by privilege_type) p from information_schema.role_table_grants
                       where grantee='authenticated' and table_schema='public' and privilege_type <> 'SELECT' group by 1 order by 1`);
-  assert.deepEqual(t, [{ table_name: 'classes', p: 'INSERT,UPDATE' }]);
+  assert.deepEqual(t, [{ table_name: 'classes', p: 'INSERT' }]);
   const c = await q(`select table_name, string_agg(column_name, ',' order by column_name) cols from information_schema.column_privileges
-                      where grantee='authenticated' and table_schema='public' and privilege_type='UPDATE'
-                        and table_name <> 'classes' group by 1 order by 1`);
+                      where grantee='authenticated' and table_schema='public' and privilege_type='UPDATE' group by 1 order by 1`);
   assert.deepEqual(c, [
+    { table_name: 'classes', cols: 'ends_at,instructor_id,location,max_capacity,starts_at,title' },
     { table_name: 'pass_products', cols: 'class_type,duration_unit,duration_value,is_active,name,price,sort_order,total_count' },
     { table_name: 'studio_members', cols: 'memo' }, { table_name: 'studios', cols: 'name' }, { table_name: 'users', cols: 'name,phone' }]);
-  return `표 단위 ${t.map((r) => `${r.table_name}(${r.p})`).join(', ')} / 열 단위 수정 ${c.map((r) => `${r.table_name}(${r.table_name === 'pass_products' ? '상품 정보 8개 열' : r.cols})`).join(', ')} — studio_id·created_by 등은 수정 불가`;
+  return `표 단위 ${t.map((r) => `${r.table_name}(${r.p})`).join(', ')} / 열 단위 수정 ${c.map((r) => `${r.table_name}(${r.table_name === 'pass_products' ? '상품 정보 8개 열' : r.cols})`).join(', ')} — status·studio_id·created_by 등은 수정 불가`;
 });
 
 await tc('TC-S04', '권한 상승 함수(SECURITY DEFINER)는 모두 search_path 를 고정하고, 비로그인은 하나도 실행할 수 없다', '고정 안 된 함수 0개 / anon 실행 가능 0개', async () => {
@@ -112,6 +112,29 @@ await tc('TC-S07', '회원은 다른 회원의 개인정보(이름·연락처)·
   }));
   assert.deepEqual(r, { users: 0, passes: 0, pays: 0 });
   return `같은 스튜디오 회원끼리 프로필 ${r.users}·수강권 ${r.passes}·결제 ${r.pays}건`;
+});
+
+await tc('TC-S08', '직원이 cancel_class()를 우회해 status 를 직접 바꾸거나, 시작·폐강된 수업을 수정하려 하면 막힌다', 'status 직접 수정 permission denied, 과거·시작·폐강 수업 수정 거절, 예정 수업 수정 허용', async () => {
+  const o = U(1);
+  const future = (await as('authenticated', o, () => q(
+    `insert into classes(studio_id,title,instructor_id,starts_at,ends_at,max_capacity)
+     values ($1,'예정 수업',$2,now()+interval '2 days',now()+interval '2 days 1 hour',4) returning id`, [S.id, o])))[0].id;
+  const started = (await as('authenticated', o, () => q(
+    `insert into classes(studio_id,title,instructor_id,starts_at,ends_at,max_capacity)
+     values ($1,'시작 수업',$2,now()-interval '10 minutes',now()+interval '40 minutes',4) returning id`, [S.id, o])))[0].id;
+
+  // 1) status 직접 변경 차단 (cancel_class 우회 방지)
+  await assert.rejects(as('authenticated', o, () => q(`update classes set status='cancelled' where id=$1`, [future])), /permission denied/);
+  // 2) 예정 수업 정상 수정 허용
+  await as('authenticated', o, () => q(`update classes set title='수정된 수업', location='C룸' where id=$1`, [future]));
+  // 3) 과거 시간으로 이동 차단
+  await assert.rejects(as('authenticated', o, () => q(`update classes set starts_at=now()-interval '1 hour', ends_at=now()-interval '10 minutes' where id=$1`, [future])), /이미 지난 시간/);
+  // 4) 이미 시작된 수업 시간 변경 차단
+  await assert.rejects(as('authenticated', o, () => q(`update classes set starts_at=now()+interval '3 days', ends_at=now()+interval '3 days 1 hour' where id=$1`, [started])), /이미 시작된 수업/);
+  // 5) 폐강 후 수정 차단
+  await as('authenticated', o, () => q(`select cancel_class($1)`, [future]));
+  await assert.rejects(as('authenticated', o, () => q(`update classes set title='변경' where id=$1`, [future])), /폐강된 수업은 수정할 수 없습니다/);
+  return 'status 직접 변경 거절, 예정 수업 수정 허용, 과거·시작·폐강 수업 변경 모두 거절';
 });
 
 const passed = results.filter((r) => r.pass).length;

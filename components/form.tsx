@@ -28,7 +28,7 @@ export function Choice({ label, sub, active, onPress }: { label: string; sub: st
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected: active }}
-      className={`flex-1 rounded-2xl border-2 px-4 py-3 ${active ? 'border-brand-600 bg-brand-50' : 'border-transparent bg-white'}`}>
+      className={`flex-1 rounded-2xl border-2 px-4 py-3 ${active ? 'border-brand-600 bg-brand-50' : 'border-transparent bg-surface'}`}>
       <Text className={`text-base font-bold ${active ? 'text-brand-700' : 'text-ink'}`}>{label}</Text>
       <Text className="mt-0.5 text-xs text-stone-500">{sub}</Text>
     </Pressable>
