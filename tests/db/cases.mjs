@@ -549,6 +549,32 @@ await tc('TC-D50', '회원 탈퇴', '혼자인 스튜디오의 원장은 탈퇴�
   return `탈퇴 성공(소속 ${left}), 재참여 거절`;
 });
 
+// 15) 수업 수정 (패치 013 + classes_staff_update 정책)
+await tc('TC-D51', '수업 수정', '강사는 자기 수업만 고칠 수 있고, 남의 수업이나 담당 강사를 다른 사람으로 바꾸는 수정은 막힌다. 원장은 모든 수업을 고칠 수 있다', '강사: 내 수업 제목 수정 1건 / 남의 수업 0건 / 담당을 남에게 넘기기 거절 · 원장: 남의 수업 수정 1건', async () => {
+  const mine = await mkClass(P.t1, 53 * 24 * 60, 4, '강사1 수업');
+  const others = await mkClass(P.t2, 53 * 24 * 60 + 120, 4, '강사2 수업');
+  const r1 = (await rpc(P.t1, `update classes set title='강사1 수정' where id=$1 returning id`, [mine.id])).length;
+  const r2 = (await rpc(P.t1, `update classes set title='남의 수업 수정' where id=$1 returning id`, [others.id])).length;
+  await rejects(rpc(P.t1, `update classes set instructor_id=$2 where id=$1`, [mine.id, P.t2]), /row-level security|policy/);
+  const r3 = (await rpc(P.owner, `update classes set title='원장 수정', location='B룸' where id=$1 returning id`, [others.id])).length;
+  const titles = await q(`select title from classes where id in ($1,$2) order by title`, [mine.id, others.id]);
+  assert.equal(r1, 1); assert.equal(r2, 0); assert.equal(r3, 1);
+  return `강사 본인 수업 ${r1}건·남의 수업 ${r2}건 수정, 담당 넘기기 거절, 원장 ${r3}건 수정 → ${titles.map((t) => t.title).join(', ')}`;
+});
+await tc('TC-D52', '수업 수정', '정원은 현재 예약 인원보다 줄일 수 없고, 예약이 있는 수업은 1:1↔그룹 유형을 바꿀 수 없다', '정원 3→1명(확정 2명) 거절 / 3→2 허용 / 그룹→1:1 거절 / 예약 없는 수업 4→1 허용', async () => {
+  const c = await mkClass(P.t1, 54 * 24 * 60, 3, '정원 테스트');
+  await book(m3, c.id); await book(m4, c.id);
+  await rejects(rpc(P.owner, `update classes set max_capacity=1 where id=$1`, [c.id]), /예약 인원\(2명\)보다 정원을 줄일 수 없습니다|1:1 ↔ 그룹/);
+  await rpc(P.owner, `update classes set max_capacity=2 where id=$1`, [c.id]);
+  const empty = await mkClass(P.t1, 54 * 24 * 60 + 120, 4, '빈 수업');
+  await rpc(P.owner, `update classes set max_capacity=1 where id=$1`, [empty.id]);
+  const caps = await q(`select max_capacity from classes where id in ($1,$2) order by title desc`, [c.id, empty.id]);
+  const c2 = await mkClass(P.t1, 54 * 24 * 60 + 240, 4, '유형 테스트');
+  await book(m3, c2.id);
+  await rejects(rpc(P.owner, `update classes set max_capacity=1 where id=$1`, [c2.id]), /1:1 ↔ 그룹/);
+  return `확정 2명 수업 정원 1 거절·2 허용, 예약 있는 그룹→1:1 거절, 빈 수업 1:1 전환 허용 (정원 ${caps.map((x) => x.max_capacity).join('/')})`;
+});
+
 // 8) 스튜디오 격리
 await tc('TC-D28', '스튜디오 격리', '다른 스튜디오 원장은 이 스튜디오의 예약·수강권·회원을 볼 수 없다', '조회 결과 0건', async () => {
   const r = await asRole(P.ownerB, async () => ({

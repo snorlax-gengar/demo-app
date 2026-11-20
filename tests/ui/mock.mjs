@@ -23,6 +23,8 @@ const users = {
 // 계정 정보(user_metadata): 이메일 가입자는 약관 동의 기록이 있다고 가정
 const userMeta = {};
 const metaOf = (id) => (userMeta[id] ??= id === 'k1' ? { name: '카카오닉네임' } : { terms_agreed_at: '2026-11-18T00:00:00Z', terms_version: 'test' });
+const identities = {};
+const ident = (id, provider) => ({ id: `${id}-${provider}`, identity_id: `iid-${id}-${provider}`, user_id: id, provider, identity_data: {}, created_at: '2026-11-01T00:00:00Z' });
 const appMetaOf = (id) => ({ provider: id === 'k1' ? 'kakao' : 'email' });
 const extraPeople = ['최지우', '정민서', '한유진', '오세훈'].map((n, i) => ({ id: 'mm' + i, name: n, phone: `010-55${i}5-12${i}4`, email: `m${i}@x.com` }));
 const profileOf = (id) => {
@@ -133,7 +135,22 @@ http.createServer(async (req, res) => {
     rpcLog.push({ fn: 'update_user', args: { me: id, password: j.password ? '(입력됨)' : null, data: j.data ?? null } });
     return send(200, { id, email: pr?.email, aud: 'authenticated', role: 'authenticated', app_metadata: appMetaOf(id), user_metadata: metaOf(id) });
   }
-  if (p === '/auth/v1/user') { const id = meOf(req); const pr = profileOf(id); return send(200, { id, email: pr.email, aud: 'authenticated', role: 'authenticated', app_metadata: appMetaOf(id), user_metadata: metaOf(id) }); }
+  // 간편 로그인 연결: 김하늘(m1)은 이메일+구글, 카카오 첫 사용자(k1)는 카카오만, 나머지는 이메일만
+  const identOf = (id) => (identities[id] ??= id === 'm1' ? [ident(id, 'email'), ident(id, 'google')] : id === 'k1' ? [ident(id, 'kakao')] : [ident(id, 'email')]);
+  if (p.startsWith('/auth/v1/user/identities/authorize')) {
+    const provider = url.searchParams.get('provider');
+    rpcLog.push({ fn: 'link_identity', args: { me: meOf(req), provider, redirect_to: url.searchParams.get('redirect_to') } });
+    // 운영 Supabase 의 'Allow manual linking' 이 꺼져 있을 때의 실제 응답을 재현
+    return send(422, { code: 422, error_code: 'manual_linking_disabled', msg: 'Manual linking is disabled' });
+  }
+  if (p.startsWith('/auth/v1/user/identities/') && req.method === 'DELETE') {
+    const id = meOf(req); const iid = p.split('/').pop(); const list = identOf(id);
+    if (list.length < 2) return send(422, { code: 422, error_code: 'single_identity_not_deletable', msg: 'User must have at least 1 identity after unlinking' });
+    identities[id] = list.filter((x) => x.identity_id !== iid);
+    rpcLog.push({ fn: 'unlink_identity', args: { me: id, identity_id: iid } });
+    return send(200, {});
+  }
+  if (p === '/auth/v1/user') { const id = meOf(req); const pr = profileOf(id); return send(200, { id, email: pr.email, aud: 'authenticated', role: 'authenticated', app_metadata: appMetaOf(id), user_metadata: metaOf(id), identities: identOf(id) }); }
   // 소셜 로그인(가짜): Supabase 인증 주소 → 바로 앱 주소로 토큰과 함께 돌려보낸다 (카카오·구글 로그인 성공 상황)
   if (p === '/auth/v1/authorize') {
     const provider = url.searchParams.get('provider'); const back = url.searchParams.get('redirect_to');

@@ -363,8 +363,16 @@ with sync_playwright() as p:
         pg.get_by_label('결제 추가').click()
         pg.get_by_label('결제 금액').fill('50000')
         pg.get_by_role('radio', name='계좌이체').click()
-        plus_disabled = pg.get_by_label('결제일 하루 뒤').get_attribute('aria-disabled')
-        pg.get_by_label('결제일 하루 전').click()
+        plus_disabled = pg.get_by_label('하루 뒤', exact=True).last.get_attribute('aria-disabled')
+        # 날짜를 누르면 달력 창이 열리고, 오늘 이후 날짜는 고를 수 없다
+        pg.get_by_label(re.compile('달력에서 선택$')).last.click()
+        pg.get_by_text('결제일 선택').wait_for(timeout=5000)
+        tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+        cal_future = pg.locator(f'[aria-label="{tomorrow.strftime("%Y.%m.%d")}"]')
+        fut_dis = cal_future.first.get_attribute('aria-disabled') if cal_future.count() else 'next-month'
+        shot('TC-U19m')
+        pg.get_by_label('닫기').last.click()
+        pg.get_by_label('하루 전', exact=True).last.click()
         pg.get_by_label('결제 메모').fill('잔금')
         pg.wait_for_timeout(300)
         shot('TC-U19a')
@@ -380,7 +388,8 @@ with sync_playwright() as p:
         y = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
         assert call == {'p_pass_id': 'p6', 'p_amount': 50000, 'p_method': 'transfer', 'p_paid_on': y, 'p_memo': '잔금'}, call
         assert plus_disabled == 'true', f'오늘 이후 버튼 {plus_disabled}'
-        return f'요청 add_pass_payment(50,000원, transfer, {y}, 잔금), 합계 170,000→220,000원, 오늘 이후 날짜 버튼 비활성'
+        assert fut_dis in ('true', 'next-month'), f'달력의 내일 날짜 {fut_dis}'
+        return f'요청 add_pass_payment(50,000원, transfer, {y}, 잔금), 합계 170,000→220,000원, "하루 뒤" 버튼·달력의 내일 날짜 비활성({fut_dis})'
 
     @case('TC-U20', '결제 추가', '추가한 결제가 매출 화면 합계에 반영된다', '이번 달 1,520,000원 → 1,570,000원 (결제일이 이번 달일 때)')
     def _():
@@ -708,6 +717,111 @@ with sync_playwright() as p:
         assert upd and upd[-1]['args'] == {'id': 'k1', 'name': '김카카오'}, upd
         assert meta and meta[-1]['args']['data'].get('terms_agreed_at') and meta[-1]['args']['data']['name'] == '김카카오', meta
         return f'체크 전 비활성 → 이름 "김카카오" 저장, 동의 시각 {meta[-1]["args"]["data"]["terms_agreed_at"][:19]} 기록 → 스튜디오 참여 화면'
+
+    def fresh_login(email, wait_text):  # 저장된 로그인 지우고 다시 로그인
+        pg.goto(BASE + '/')
+        pg.evaluate('localStorage.clear()')
+        login(email)
+        pg.wait_for_selector(f'text={wait_text}', timeout=30000)
+
+    @case('TC-U34', '수업 수정', '원장이 예정 수업의 이름·장소·날짜를 고치면, 예약자가 있을 때 안내를 거쳐 저장된다', '수업 정보 수정 → 이름·장소 변경, 날짜 +1일 → "예약된 회원이 있습니다"(1명) → 변경하기 → "수정했습니다", 수정 요청 1번(제목·장소·하루 뒤 시간)')
+    def _():
+        import datetime
+        fresh_login('owner@x.com', '전체 강사 보기')
+        pg.goto(BASE + '/class/c11')
+        pg.get_by_text('수업 정보 수정 (시간·장소·강사)').click()
+        pg.locator('input[placeholder="예: A룸"]').wait_for(timeout=15000)
+        pg.locator('input[placeholder="[테스트] 저녁 그룹"]').fill('저녁 그룹 (변경)')
+        pg.locator('input[placeholder="예: A룸"]').fill('C룸')
+        pg.get_by_label('하루 뒤', exact=True).first.click()
+        pg.wait_for_timeout(300)
+        shot('TC-U34a', full=True)
+        pg.get_by_text('저장', exact=True).last.click()
+        pg.get_by_text('예약된 회원이 있습니다').wait_for(timeout=5000)
+        warn = pg.get_by_text('예약·대기 중인 회원이 1명', exact=False).count()
+        pg.wait_for_timeout(500)
+        shot('TC-U34b')
+        pg.get_by_role('button', name='변경하기').click()
+        pg.get_by_text('수정했습니다').wait_for(timeout=10000)
+        pg.wait_for_timeout(500)
+        shot('TC-U34')
+        pg.get_by_role('button', name='확인').click()
+        call = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'classes_update']
+        assert warn >= 1, warn
+        assert len(call) == 1 and call[0]['args']['title'] == '저녁 그룹 (변경)' and call[0]['args']['location'] == 'C룸', call
+        moved = datetime.datetime.fromisoformat(call[0]['args']['starts_at'].replace('Z', '+00:00')) - datetime.datetime.now(datetime.timezone.utc)
+        assert 20 < moved.total_seconds() / 3600 < 30, moved
+        return f'안내(예약 1명) → 수정 요청 1번: 제목 "{call[0]["args"]["title"]}", 장소 C룸, 시작 {round(moved.total_seconds() / 3600)}시간 뒤로'
+
+    @case('TC-U35', '수업 수정', '이미 시작된 수업은 수정 화면에서 막히고 이유를 보여준다', '"이미 시작된 수업은 수정할 수 없습니다", 저장 버튼 없음')
+    def _():
+        pg.goto(BASE + '/class/edit?id=c9')
+        pg.get_by_text('이미 시작된 수업은 수정할 수 없습니다.').wait_for(timeout=15000)
+        save_btn = pg.get_by_text('저장', exact=True).locator('visible=true').count()
+        pg.wait_for_timeout(300)
+        shot('TC-U35')
+        assert save_btn == 0, save_btn
+        return '시작된 수업 c9 → 안내 표시, 저장 버튼 0개'
+
+    @case('TC-U36', '회원 이력', '회원 홈에서 지난 수업 이력과 수강권 사용 내역을 볼 수 있다', '지난 수업 이력: 출석·취소 통계와 목록 / 수강권 카드 → 사용·변동 내역(지급·사용·환불·자동 확정)')
+    def _():
+        fresh_login('member@x.com', '내 수강권')
+        pg.get_by_label('지난 수업 이력 보기').click()
+        pg.get_by_text('출석률').wait_for(timeout=15000)
+        body = pg.inner_text('body')
+        pg.wait_for_timeout(300)
+        shot('TC-U36a', full=True)
+        pg.get_by_label('뒤로').locator('visible=true').click()
+        pg.get_by_label(re.compile('사용 내역 보기$')).nth(1).click()  # 두 번째 카드 = 그룹 수강권(p2)
+        pg.get_by_text('사용 · 변동 내역', exact=False).wait_for(timeout=15000)
+        logs = pg.inner_text('body')
+        pg.wait_for_timeout(300)
+        shot('TC-U36', full=True)
+        assert '4:1 그룹 리포머' in body, body[:300]
+        n = re.search(r'사용 · 변동 내역 (\d+)건', logs)
+        assert n and int(n.group(1)) == 5, logs[:300]
+        return f'이력 화면(출석·노쇼·취소·출석률, 지난 수업 목록) → 수강권 사용·변동 내역 {n.group(1)}건'
+
+    @case('TC-U37', '간편 로그인 연결', '내 정보에서 연결된 간편 로그인을 보고 해제할 수 있으며, 서버의 수동 연결 설정이 꺼져 있으면 그 이유를 안내한다', '구글 "연결됨"·해제 → 확인 → 해제 요청 1번 → "연결 안 됨" / 카카오 연결 → "Enable Manual Linking" 안내')
+    def _():
+        pg.goto(BASE + '/')
+        pg.wait_for_selector('text=내 수강권', timeout=30000)
+        pg.get_by_text('내 정보', exact=True).last.click()
+        pg.get_by_text('간편 로그인 연결').wait_for(timeout=15000)
+        pg.get_by_label('Google 연결 해제').scroll_into_view_if_needed()
+        pg.wait_for_timeout(300)
+        shot('TC-U37a')
+        pg.get_by_label('Google 연결 해제').click()
+        pg.get_by_role('button', name='해제', exact=True).click()
+        pg.get_by_label('Google 연결하기').wait_for(timeout=10000)
+        pg.get_by_label('카카오 연결하기').click()
+        pg.get_by_text('연결하지 못했어요').wait_for(timeout=10000)
+        msg = pg.get_by_text('Enable Manual Linking', exact=False).count()
+        pg.wait_for_timeout(500)
+        shot('TC-U37')
+        pg.get_by_role('button', name='확인').click()
+        log = json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read())
+        un = [x for x in log if x['fn'] == 'unlink_identity']
+        ln = [x for x in log if x['fn'] == 'link_identity']
+        for e in [e for e in errors if 'status of 422' in e]:
+            errors.remove(e)  # 연결 설정이 꺼진 서버의 거절(422)은 의도한 상황
+        assert un and un[-1]['args'] == {'me': 'm1', 'identity_id': 'iid-m1-google'}, un
+        assert ln and ln[-1]['args']['provider'] == 'kakao' and msg >= 1, (ln, msg)
+        return '구글 해제 요청 1번 → "연결 안 됨"·연결 버튼, 카카오 연결 시 서버 설정(Enable Manual Linking) 안내'
+
+    @case('TC-U38', '소셜 로그인', 'PKCE 방식(?code=)으로 돌아왔지만 확인 정보가 없거나 만료된 경우 앱이 멈추지 않고 안내 후 로그인 화면으로 돌아간다', '"로그인하지 못했어요" 안내 → 로그인 화면')
+    def _():
+        pg.goto(BASE + '/')
+        pg.evaluate('localStorage.clear()')
+        pg.goto(BASE + '/auth-callback?code=expired-or-foreign-code')
+        pg.get_by_text('로그인하지 못했어요').wait_for(timeout=15000)
+        pg.wait_for_timeout(400)
+        shot('TC-U38')
+        pg.get_by_role('button', name='확인').click()
+        pg.wait_for_selector('input[placeholder="name@example.com"]', timeout=15000)
+        for e in [e for e in errors if 'status of 4' in e or 'code verifier' in e.lower()]:
+            errors.remove(e)
+        return '만료/다른 기기 코드 → 안내 후 로그인 화면 (앱 멈춤 없음)'
 
     @case('TC-U10', '공통', '테스트 내내 브라우저 기본 팝업(confirm/alert)과 화면 오류가 없다', '브라우저 기본 팝업 0건, 페이지 오류 0건')
     def _():

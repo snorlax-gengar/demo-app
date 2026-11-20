@@ -40,7 +40,7 @@ rows_db = ''.join(
     f'<tr><td class="id">{e(r["id"])}</td><td>{e(r["area"])}</td><td>{e(r["title"])}</td><td>{e(r["expected"])}</td>'
     f'<td>{e(r["actual"])}</td><td>{badge(r["pass"], r.get("status"))}</td></tr>' for r in db)
 
-extra_shots = {'TC-U32': ['TC-U32a.png', 'TC-U32.png'], 'TC-U33': ['TC-U33a.png', 'TC-U33.png'], 'TC-U28': ['TC-U28a.png', 'TC-U28.png'], 'TC-U29': ['TC-U29a.png', 'TC-U29.png'], 'TC-U24': ['TC-U24a.png', 'TC-U24.png'], 'TC-U25': ['TC-U25a.png', 'TC-U25b.png', 'TC-U25c.png', 'TC-U25.png'], 'TC-U27': ['TC-U27a.png', 'TC-U27b.png', 'TC-U27.png'], 'TC-U22': ['TC-U22a.png', 'TC-U22.png', 'TC-U22b.png'], 'TC-U19': ['TC-U19a.png', 'TC-U19.png'], 'TC-U15': ['TC-U15a.png', 'TC-U15b.png', 'TC-U15.png'], 'TC-U17': ['TC-U17a.png'], 'TC-U12': ['TC-U12a.png', 'TC-U12.png'], 'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
+extra_shots = {'TC-U19': ['TC-U19a.png', 'TC-U19m.png', 'TC-U19.png'], 'TC-U34': ['TC-U34a.png', 'TC-U34b.png', 'TC-U34.png'], 'TC-U36': ['TC-U36a.png', 'TC-U36.png'], 'TC-U37': ['TC-U37a.png', 'TC-U37.png'], 'TC-U32': ['TC-U32a.png', 'TC-U32.png'], 'TC-U33': ['TC-U33a.png', 'TC-U33.png'], 'TC-U28': ['TC-U28a.png', 'TC-U28.png'], 'TC-U29': ['TC-U29a.png', 'TC-U29.png'], 'TC-U24': ['TC-U24a.png', 'TC-U24.png'], 'TC-U25': ['TC-U25a.png', 'TC-U25b.png', 'TC-U25c.png', 'TC-U25.png'], 'TC-U27': ['TC-U27a.png', 'TC-U27b.png', 'TC-U27.png'], 'TC-U22': ['TC-U22a.png', 'TC-U22.png', 'TC-U22b.png'], 'TC-U19': ['TC-U19a.png', 'TC-U19.png'], 'TC-U15': ['TC-U15a.png', 'TC-U15b.png', 'TC-U15.png'], 'TC-U17': ['TC-U17a.png'], 'TC-U12': ['TC-U12a.png', 'TC-U12.png'], 'TC-U11': ['TC-U11a.png', 'TC-U11.png'], 'TC-U03': ['TC-U03a.png', 'TC-U03.png'], 'TC-U06': ['TC-U06a.png', 'TC-U06b.png', 'TC-U06.png'], 'TC-U09': ['TC-U09a.png', 'TC-U09.png']}
 cards_ui = ''
 for r in ui:
     shots = extra_shots.get(r['id'], [r['shot']])
@@ -85,7 +85,7 @@ rows_manual = ''.join(mrow(m) for m in manual)
 manual_ok = sum(m[4] == 'ok' for m in manual)
 
 page = f'''<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>테스트 증적 2026-11-18</title><style>
+<title>테스트 증적 2026-11-20</title><style>
 :root{{--ink:#1B1F1E;--brand:#24766A;--muted:#6B6B66;--line:#E7E5E0;--bg:#F6F5F1}}
 *{{box-sizing:border-box}}body{{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}}
 main{{max-width:1180px;margin:0 auto;padding:32px 20px 80px}}h1{{font-size:26px;margin:0 0 4px}}h2{{font-size:19px;margin:40px 0 12px}}h4{{margin:6px 0 8px;font-size:15px}}
@@ -100,7 +100,7 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 .note{{background:#fff;border-left:4px solid var(--brand);padding:12px 14px;border-radius:8px;font-size:14px}}code{{background:#F1EFEA;padding:1px 5px;border-radius:4px;font-size:12px}}
 @media(max-width:720px){{.kpis{{grid-template-columns:repeat(2,1fr)}}table{{font-size:12px}}}}
 </style></head><body><main>
-<h1>테스트 증적 — 2026-11-18</h1>
+<h1>테스트 증적 — 2026-11-20</h1>
 <div class="sub">대상: snorlax-gengar/demo-app (main 64e7e1b 이후 변경분) · 작성: Claude</div>
 <div class="kpis">
 <div class="kpi"><b>{total_pass}/{total}</b><span>자동 테스트 통과</span></div>
@@ -116,6 +116,7 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 
 <h2>1. 이번 변경 사항</h2>
 <table><tr><th>구분</th><th>내용</th><th>관련 테스트</th></tr>
+<tr><td>회귀 테스트(2026-11-20)</td><td><b>최신 main(a177cf0) 전체 재검증</b>: 다른 작업에서 추가된 수업 수정·내 기록·내 수강권·간편 로그인 연결/해제·PKCE 콜백·패치 013 포함. 결제일 선택이 달력 창(DatePickerModal)으로 바뀌어 TC-U19 를 새 화면에 맞게 고침(F-07). 새 기능 테스트 추가: 수업 수정 권한·정원·유형(TC-D51·D52), 수업 수정 화면(TC-U34·U35), 회원 이력·수강권 내역(TC-U36), 간편 로그인 연결 관리(TC-U37), PKCE 코드 오류 처리(TC-U38). 공개 페이지 실서버 재확인</td><td class="id">TC-D51·D52, TC-U19·U34~U38</td></tr>
 <tr><td>디자인</td><td><b>PIQ 마크·브랜드 색</b>: 받은 마크를 벡터로 정리해 앱 아이콘·안드로이드 적응형·스플래시·로그인 로고·공개 페이지에 적용. 앱 색을 마크 기준으로 — 흰 바탕, 글자 진회색 #2F3842, 메인 초록 #0B7A4D(버튼·수강권 카드), 마크 민트 #53FAA6 는 진행 막대 등 포인트만, 카드는 연한 회색 #F4F7F5. 글자 대비 자동 점검 추가</td><td class="id">TC-R03, TC-R11, 화면 전체</td></tr>
 <tr><td>신규 기능</td><td><b>간편 로그인 (카카오·애플·구글)</b>: 로그인 화면 버튼(애플은 iPhone 개발 빌드·배포 앱에서만 기본 애플 버튼). 카카오·구글은 앱 안 브라우저로 로그인 후 앱으로 복귀, 애플은 기기 로그인 창 → 토큰으로 로그인. 처음 들어온 사람과 약관 이전 가입자는 <b>이름 확인 + 약관 동의</b> 화면을 거치고 동의 시각을 계정 정보에 기록. 각 회사 앱 등록·Supabase 키 입력은 <code>docs/social-login-setup.md</code></td><td class="id">TC-U32·U33, TC-R10</td></tr>
 <tr><td>운영 설정</td><td><b>Supabase 대시보드 점검·적용(2026-11-18)</b>: Redirect URLs 에 <code>piq://**</code>·<code>exp://**</code> 추가, 탈퇴 함수 Verify JWT 끔. 확인 결과 커스텀 SMTP 없음(기본 메일은 팀원에게만·시간당 2통), 요금제 FREE, Confirm email 꺼짐(SMTP 연결 후 켜야 함), 리전 싱가포르 → 처리방침에 국외 이전 항목 추가. EAS 환경 변수 0개 확인</td><td class="id">—</td></tr>
@@ -159,7 +160,9 @@ dl{{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;margin:0 0 10px;font
 <tr><td class="id">F-03</td><td>iPhone 에서 한 줄 입력칸에 입력하는 동안 글자 아래(g, @ 등)가 잘려 보임 (키보드를 내리면 정상)</td><td>TC-M03 캡처 1 (수정 전) — 한 줄 입력칸에 줄 높이가 함께 지정된 iOS 동작</td><td><span class="b ok">조치 완료</span> 한 줄 입력칸 12곳을 글자 크기만 지정하도록 변경, 캡처 2 (수정 후)</td></tr>
 <tr><td class="id">F-04</td><td>푸시를 눌러 알림함이 열릴 때 위쪽 새로고침 표시(스피너)가 사라지지 않고 목록이 밀린 채 남음 (iOS)</td><td>TC-M08 화면 기록 마지막 장면 — 알림 수신·읽음 처리로 생긴 자동 새로고침에도 스피너를 켜던 구조</td><td><span class="b ok">조치 완료</span> 사용자가 직접 당겼을 때만 표시하도록 11개 화면 변경 (hooks/usePullRefresh)</td></tr>
 <tr><td class="id">F-05</td><td>수업 등록 화면을 주소로 바로 열면 등록 후 개발용 "GO_BACK" 경고, 확인창 버튼에 접근성 이름 없음</td><td>TC-M08 준비 중 발견</td><td><span class="b ok">조치 완료</span> 돌아갈 화면이 없으면 달력으로, 확인창 버튼에 버튼 글자를 접근성 이름으로 지정</td></tr>
-<tr><td class="id">F-06</td><td>탈퇴 재참여 차단용 트리거 함수(_guard_withdrawn_member)에 로그인 사용자 실행 권한이 남아 있음 (직접 호출해도 트리거 밖에서는 실행 불가라 실제 위험은 없음)</td><td>TC-S04·S05 보안 점검 중 발견</td><td><span class="b ok">조치 완료</span> 패치 012·schema.sql 에 실행 권한 회수 추가</td></tr></table>
+<tr><td class="id">F-06</td><td>탈퇴 재참여 차단용 트리거 함수(_guard_withdrawn_member)에 로그인 사용자 실행 권한이 남아 있음 (직접 호출해도 트리거 밖에서는 실행 불가라 실제 위험은 없음)</td><td>TC-S04·S05 보안 점검 중 발견</td><td><span class="b ok">조치 완료</span> 패치 012·schema.sql 에 실행 권한 회수 추가</td></tr>
+<tr><td class="id">F-07</td><td>결제 추가 화면의 결제일 선택이 ±1일 버튼에서 달력 창으로 바뀌어 기존 화면 테스트(TC-U19)가 옛 버튼 이름을 찾다 실패, 뒤 테스트가 연쇄 실패(22/33)</td><td>2026-11-20 회귀 테스트</td><td><span class="b ok">조치 완료</span> 테스트를 새 화면에 맞추고, 달력 창에서 내일 날짜가 막히는지도 검사하도록 보강 → 38/38</td></tr>
+<tr><td class="id">F-08</td><td>내 정보의 "간편 로그인 연결"은 Supabase 의 <b>Allow manual linking</b> 이 켜져 있어야 동작함. 11-18 점검 때 꺼져 있었음(앱은 이 경우 이유를 안내 — TC-U37). 카카오 <b>Allow users without an email</b> 도 꺼져 있어 이메일 제공에 동의하지 않은 카카오 사용자는 가입 실패 가능</td><td>설정 점검</td><td><span class="b warn">확인 필요</span> Supabase 대시보드에서 두 설정 켜기(사용자 결정)</td></tr></table>
 </main></body></html>'''
 open(OUT, 'w').write(page)
 print('written', OUT, len(page) // 1024, 'KB')
