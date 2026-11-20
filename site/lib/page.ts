@@ -147,12 +147,13 @@ ${p.trial_note ? `<p class="muted" style="margin-bottom:6px">${multiline(p.trial
 <label for="f-pref">희망 요일·시간 (선택)</label><input id="f-pref" name="preferred" type="text" maxlength="100" placeholder="예: 평일 저녁, 토요일 오전">
 <label for="f-msg">남길 말 (선택)</label><textarea id="f-msg" name="message" maxlength="500" placeholder="운동 경험, 궁금한 점 등"></textarea>
 <div class="hp" aria-hidden="true"><label for="f-company">회사</label><input id="f-company" name="company" type="text" tabindex="-1" autocomplete="off"></div>
-<label class="consent"><input id="f-consent" type="checkbox" name="consent"><span>[필수] 체험 수업 안내를 위한 개인정보 수집·이용에 동의합니다.</span></label>
+<label class="consent"><input id="f-consent" type="checkbox" name="consent"><span>[필수] 체험 수업 안내를 위한 개인정보 수집·이용에 동의합니다. (만 14세 미만은 보호자가 보호자 이름·연락처로 신청해 주세요)</span></label>
 <details><summary>자세히 보기</summary>
 <p>· 수집 항목: 이름, 연락처, (선택) 희망 시간, 남길 말</p>
 <p>· 목적: ${esc(p.name)}의 체험 수업 안내 연락</p>
 <p>· 받는 곳: ${esc(p.name)} 원장·실장 (PIQ 앱으로 전달)</p>
 <p>· 보관: 신청일로부터 180일 뒤 자동 삭제, 스튜디오가 운영을 종료하면 즉시 삭제</p>
+<p>· 만 14세 미만 아동의 정보는 받지 않아요. 아동이 직접 남긴 신청으로 확인되면 바로 지워요.</p>
 <p>· 동의하지 않을 수 있으며, 이 경우 체험 신청을 할 수 없어요. <a href="/privacy.html">개인정보 처리방침</a></p>
 </details>
 <button class="btn primary" style="width:100%;margin-top:16px" type="submit" id="f-submit">신청하기</button>

@@ -565,7 +565,7 @@ with sync_playwright() as p:
         assert '데모 필라테스' in msg and still == 1
         return f'안내 "{msg[:40]}…", 확인 후 탈퇴 화면 유지(로그인 유지), 서버 거절 응답 400 {len(expected_400)}건(의도)'
 
-    @case('TC-U27', '약관', '가입은 약관 동의를 체크해야 할 수 있고, 로그인 전에도 약관을 열어 볼 수 있으며, 동의 시각이 계정 정보에 남는다', '동의 전 가입 버튼 비활성 → 처리방침 링크 열림(비로그인) → 동의 후 가입 요청에 terms_agreed_at·terms_version 포함')
+    @case('TC-U27', '약관', '가입은 약관 동의를 체크해야 할 수 있고, 로그인 전에도 약관을 열어 볼 수 있으며, 동의 시각이 계정 정보에 남는다', '동의 전 가입 버튼 비활성 → 처리방침 링크 열림(비로그인) → 동의해도 비밀번호 7자면 요청 안 나감 → 8자로 가입 요청에 terms_agreed_at·terms_version 포함')
     def _():
         pg.goto(BASE + '/profile')
         pg.get_by_text('로그아웃', exact=True).last.click()
@@ -575,7 +575,7 @@ with sync_playwright() as p:
         pg.wait_for_selector('input[placeholder="홍길동"]', timeout=15000)
         pg.fill('input[placeholder="홍길동"]', '새회원')
         pg.locator('input[placeholder="name@example.com"]').locator('visible=true').fill('fresh@x.com')
-        pg.locator('input[placeholder="비밀번호"]').locator('visible=true').fill('abcdef')
+        pg.locator('input[placeholder="비밀번호"]').locator('visible=true').fill('abcdefg')  # 7자: 8자 규칙으로 막혀야 함
         submit = pg.get_by_text('가입하기', exact=True).locator('visible=true')
         submit.click(force=True)
         pg.wait_for_timeout(300)
@@ -589,8 +589,14 @@ with sync_playwright() as p:
         if not pg.locator('input[placeholder="홍길동"]').locator('visible=true').input_value():
             pg.fill('input[placeholder="홍길동"]', '새회원')
             pg.locator('input[placeholder="name@example.com"]').locator('visible=true').fill('fresh@x.com')
-            pg.locator('input[placeholder="비밀번호"]').locator('visible=true').fill('abcdef')
+            pg.locator('input[placeholder="비밀번호"]').locator('visible=true').fill('abcdefg')
         pg.get_by_label('이용약관과 개인정보 처리방침에 동의').locator('visible=true').click()
+        # 동의해도 7자 비밀번호면 가입 요청이 나가지 않는다 → 8자로 바꾸면 나간다
+        pg.get_by_text('가입하기', exact=True).locator('visible=true').click(force=True)
+        pg.wait_for_timeout(300)
+        short_pw = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'signup']
+        pg.locator('input[placeholder="비밀번호"]').locator('visible=true').fill('abcdefgh')
+        assert not short_pw, short_pw
         shot('TC-U27b', full=True)
         pg.get_by_text('가입하기', exact=True).locator('visible=true').click()
         pg.get_by_text('인증 메일을 보냈습니다').wait_for(timeout=10000)
@@ -1174,6 +1180,24 @@ with sync_playwright() as p:
         shot('TC-U43')
         assert before >= 1 and stale >= 1, (before, stale)
         return f'종료 직후에도 화면에는 예전 스튜디오({stale}곳 표시) → 앱 복귀 시 소속 새로 불러옴 → 스튜디오 만들기/참여 화면'
+
+    @case('TC-U54', '보안', '초대 코드를 틀리면 "찾을 수 없습니다"만 안내하고, 1시간에 10번 넘게 틀리면 잠시 막힌다 (무작위 대입 방지, patch 018)', '틀린 코드 → "참여할 수 없습니다 · 초대 코드를 찾을 수 없습니다" / 10번 틀린 뒤 → "너무 많이 틀렸어요"')
+    def _():
+        box = pg.locator('input[placeholder="예: 7K3QXA"]').locator('visible=true')
+        msgs = []
+        for i in range(11):
+            box.fill(f'ZZZZ{i:02d}')
+            pg.get_by_text('참여하기', exact=True).locator('visible=true').click()
+            pg.get_by_text('참여할 수 없습니다').wait_for(timeout=10000)
+            msgs.append(pg.locator('text=/초대 코드를/').last.inner_text())
+            if i in (0, 10):
+                shot('TC-U54a' if i == 0 else 'TC-U54')
+            pg.get_by_role('button', name='확인').last.click()
+            pg.wait_for_timeout(200)
+        errors[:] = [e for e in errors if 'status of 400' not in e]  # 11번째 거절(400)은 의도된 응답
+        assert '찾을 수 없습니다' in msgs[0] and all('찾을 수 없습니다' in m for m in msgs[:10]), msgs
+        assert '너무 많이 틀렸어요' in msgs[10], msgs[10]
+        return f'1~10번째: "{msgs[0][:20]}…" → 11번째: "{msgs[10][:24]}…"'
 
     @case('TC-U10', '공통', '테스트 내내 브라우저 기본 팝업(confirm/alert)과 화면 오류가 없다', '브라우저 기본 팝업 0건, 페이지 오류 0건')
     def _():

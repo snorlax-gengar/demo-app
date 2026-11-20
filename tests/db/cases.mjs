@@ -782,6 +782,20 @@ await tc('TC-D61', '체험 신청', '스튜디오 운영을 종료하면 소개 
   return `180일 지난 신청 ${purged}건 정리 · 운영 종료 전 신청 ${before}건 → 종료 후 ${after}건, 페이지 비공개·공개 조회 null`;
 });
 
+await tc('TC-D62', '보안', '초대 코드를 무작위로 넣어 남의 스튜디오에 들어가는 것을 막는다: 틀린 시도는 기록되고, 1시간에 10번 틀리면 맞는 코드도 잠시 막힌다. 다른 사람은 영향 없고, 시도 기록은 앱에서 볼 수 없다', '틀린 코드 → 빈 결과(id null)·기록 1건 / 10번 틀린 뒤 맞는 코드 → "너무 많이 틀렸어요" / 다른 사용자 정상 참여 / join_attempts 조회 거절', async () => {
+  const g = await newUser(60, '대입시도'); const ok = await newUser(61, '정상참여');
+  const E = (await q(`select * from studios order by created_at limit 1`))[0];
+  const r1 = (await rpc(g, `select (join_studio('ZZZZZZ')).id as id`))[0].id;
+  assert.equal(r1, null);
+  for (let i = 0; i < 9; i++) await rpc(g, `select (join_studio($1)).id`, ['WRONG' + i]);
+  const cnt = (await q(`select count(*)::int c from join_attempts where user_id=$1`, [g]))[0].c;
+  await rejects(rpc(g, `select * from join_studio($1)`, [E.invite_code]), /너무 많이 틀렸어요/);
+  const joined = (await rpc(ok, `select (join_studio($1)).id as id`, [E.invite_code]))[0].id;
+  assert.equal(cnt, 10); assert.equal(joined, E.id);
+  await rejects(rpc(ok, `select * from join_attempts`), /permission denied/);
+  return `틀린 코드 → id null, 기록 ${cnt}건 → 맞는 코드도 막힘 / 다른 사용자 참여 정상 / 기록 조회 거절`;
+});
+
 const passed = results.filter((r) => r.pass).length;
 console.log(`\n${passed}/${results.length} passed`);
 fs.writeFileSync(outPath, JSON.stringify({ schema: schemaPath, ranAt: new Date().toISOString(), results }, null, 2));

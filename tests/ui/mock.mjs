@@ -120,6 +120,7 @@ const openPasses = (sid) => {
   return { members: list.length, remaining: list.reduce((a, x) => a + x.remaining, 0), list };
 };
 let codeSeq = 0;
+const joinFails = {};
 // 스튜디오 소개 페이지·체험 신청 (patch 016 의 단순화)
 const studioPages = {
   S1: { studio_id: 'S1', slug: 'demo-pilates', published: true, headline: '소수 정예 기구 필라테스', intro: '4:1 그룹과 1:1 개인 레슨을 운영해요.\n처음 오시는 분도 편하게 시작할 수 있어요.', category: '필라테스', address: '서울 마포구 양화로 1', contact_phone: '02-123-4567', kakao_url: 'https://open.kakao.com/o/demo', instagram: 'demo.pilates', website_url: null, hours: '평일 07:00–22:00\n주말 09:00–15:00', show_schedule: true, trial_enabled: true, trial_note: '체험 1회 2만원 · 운동복만 챙겨 오세요', photos: ['S1/cover.jpg'], updated_at: '2026-11-20T00:00:00Z' },
@@ -277,7 +278,10 @@ http.createServer(async (req, res) => {
     }
     if (table === 'rpc/join_studio') {
       const s = Object.values(studios).find((x) => x.invite_code === String(args.p_code).toUpperCase());
-      if (!s) return send(400, { code: 'P0001', message: '초대 코드를 찾을 수 없습니다. 다시 확인해 주세요.' });
+      joinFails[me] = (joinFails[me] ?? []).filter((t) => Date.now() - t < 3600e3);
+      if (joinFails[me].length >= 10) return send(400, { code: 'P0001', message: '초대 코드를 너무 많이 틀렸어요. 1시간 뒤에 다시 시도하거나, 스튜디오에 코드를 다시 확인해 주세요.' });
+      // patch 018: 틀린 코드는 예외 대신 빈 결과(모든 칸 null)
+      if (!s) { joinFails[me].push(Date.now()); return send(200, { id: null, name: null, invite_code: null, created_at: null, closed_at: null }); }
       if (!members.some((m) => m.studio_id === s.id && m.user_id === me)) members.push({ studio_id: s.id, user_id: me, role: 'member', memo: null, status: 'active', joined_at: new Date().toISOString() });
       return send(200, s);
     }

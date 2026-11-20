@@ -21,7 +21,7 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = name.trim().length > 0 && email.trim().length > 0 && password.length >= 6 && agreed && !loading;
+  const canSubmit = name.trim().length > 0 && email.trim().length > 0 && password.length >= 8 && agreed && !loading;
 
   const onSubmit = async () => {
     if (!canSubmit) return;
@@ -101,7 +101,7 @@ export default function SignupScreen() {
           className={fieldClass}
         />
 
-        <Text className={labelClass}>비밀번호 (6자 이상)</Text>
+        <Text className={labelClass}>비밀번호 (8자 이상)</Text>
         <PasswordInput
           value={password}
           onChangeText={setPassword}

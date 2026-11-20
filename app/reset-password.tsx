@@ -26,7 +26,7 @@ export default function ResetPasswordScreen() {
   }, [url, params]);
 
   const linkError = params?.error ?? (params && !params.accessToken ? '재설정 링크가 올바르지 않아요.' : null);
-  const valid = pw.length >= 6 && pw === pw2;
+  const valid = pw.length >= 8 && pw === pw2;
 
   const submit = async () => {
     if (!params || !valid || busy) return;
@@ -61,7 +61,7 @@ export default function ResetPasswordScreen() {
           </>
         ) : (
           <>
-            <Text className="mt-2 text-base text-stone-500">앞으로 로그인할 때 쓸 비밀번호를 정해 주세요. (6자 이상)</Text>
+            <Text className="mt-2 text-base text-stone-500">앞으로 로그인할 때 쓸 비밀번호를 정해 주세요. (8자 이상)</Text>
             <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">새 비밀번호</Text>
             <PasswordInput value={pw} onChangeText={setPw} placeholder="새 비밀번호" placeholderTextColor="#A8A29E" textContentType="newPassword" className={field} />
             <Text className="mb-2 mt-4 text-sm font-semibold text-stone-600">한 번 더</Text>

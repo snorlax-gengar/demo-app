@@ -47,7 +47,7 @@ const PRIVACY_EN = `<h2>Privacy Policy — English summary</h2>
 
 Google user data: if you sign in with Google, we receive only your name, email address and profile picture. We do not access any other Google data (Drive, Gmail, Contacts, etc.). This data is used only to identify you, sign you in and show your name to the studio you join. It is never sold, used for advertising or AI training, or shared with third parties, except that staff of a studio you joined can see it. ${esc(LEGAL_INFO.appName)}'s use of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.
 
-Storage and processors: data is stored by Supabase Inc. (servers in Singapore) and push notifications are delivered via Expo (650 Industries, Inc.), over encrypted connections with row-level access control.
+Storage and processors: data is stored by Supabase Inc. (servers in Singapore) and push notifications are delivered via Expo (650 Industries, Inc.), Google Firebase Cloud Messaging (Android) and Apple Push Notification service (iOS); studio intro pages are hosted by Expo. All transfers use encrypted connections, and the database uses row-level access control. Children under 14 cannot sign up, and trial requests must be made by a parent or guardian.
 
 Trial class requests: on a studio's public intro page, visitors who are not members can request a trial class by leaving their name, phone number and optional preferred time and message, with explicit consent. This is delivered only to that studio's owner and managers, and is deleted automatically after 180 days or immediately when the studio closes.
 

@@ -83,6 +83,8 @@ export function useJoinStudio() {
     mutationFn: async (code: string): Promise<Studio> => {
       const { data, error } = await supabase.rpc('join_studio', { p_code: code });
       if (error) throw toError(error);
+      // 틀린 코드는 빈 결과로 온다 (서버가 틀린 횟수를 세기 위해 — patch 018)
+      if (!(data as Studio | null)?.id) throw new Error('초대 코드를 찾을 수 없습니다. 다시 확인해 주세요.');
       await afterStudioJoined(data as Studio);
       return data as Studio;
     },
