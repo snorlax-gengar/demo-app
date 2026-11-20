@@ -78,7 +78,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!userId) return;
 
     const [profileRes, membershipRes] = await Promise.all([
-      supabase.from('users').select('*').eq('id', userId).maybeSingle(),
+      // 연락처는 표에서 직접 못 읽는다 (patch 019) → 본인 것은 my_contact() 로
+      Promise.all([
+        supabase.from('users').select('id, name, created_at, withdrawn_at').eq('id', userId).maybeSingle(),
+        supabase.rpc('my_contact').maybeSingle<{ phone: string | null; email: string | null }>(),
+      ]).then(([u, c]) => ({
+        data: u.data ? ({ ...u.data, phone: c.data?.phone ?? null, email: c.data?.email ?? null } as UserProfile) : null,
+        error: u.error ?? c.error,
+      })),
       supabase
         .from('studio_members')
         .select('studio_id, role, status, memo, joined_at, studio:studios(*)')

@@ -38,7 +38,7 @@ const TIMELINE_SELECT = `
   id, studio_id, title, starts_at, ends_at, max_capacity, class_type, location, instructor_id, status,
   instructor:users!classes_instructor_id_fkey ( id, name ),
   bookings ( id, status, created_at,
-    member:users!bookings_member_id_fkey ( id, name, phone,
+    member:users!bookings_member_id_fkey ( id, name,
       passes!passes_member_id_fkey ( studio_id, class_type, remaining_count, total_count, expires_on, starts_on, is_active ) ) )`;
 
 /** 취소 예약 제외 + 예약 순(=대기 순번) 정렬 + 다른 스튜디오 수강권 제외 */
@@ -487,8 +487,23 @@ export function useCancelClass() {
 // 직원 — 사람
 // ---------------------------------------------------------------------------
 
-type MemberRow = { role: Role; memo: string | null; joined_at: string; user: UserProfile | null };
-const toPerson = (r: MemberRow): StudioPerson => ({ ...r.user!, role: r.role, memo: r.memo, joined_at: r.joined_at });
+type MemberRow = { role: Role; memo: string | null; joined_at: string; user: Omit<UserProfile, 'phone' | 'email'> | null };
+type Contact = { user_id: string; phone: string | null; email: string | null };
+const toPerson = (r: MemberRow, contacts: Map<string, Contact>): StudioPerson => ({
+  ...r.user!,
+  phone: contacts.get(r.user!.id)?.phone ?? null,
+  email: contacts.get(r.user!.id)?.email ?? null,
+  role: r.role,
+  memo: r.memo,
+  joined_at: r.joined_at,
+});
+/** 연락처는 표에서 직접 못 읽고 함수로만 받는다 (patch 019): 직원에게, 지금 소속인 사람 것만. 이메일은 원장·실장만 */
+const USER_COLUMNS = 'id, name, created_at, withdrawn_at';
+async function studioContacts(studioId: string): Promise<Map<string, Contact>> {
+  const { data, error } = await supabase.rpc('studio_contacts', { p_studio_id: studioId });
+  if (error) throw toError(error);
+  return new Map(((data ?? []) as Contact[]).map((c) => [c.user_id, c]));
+}
 
 /** 이 스튜디오의 전체 명단(회원 + 직원) + 각자의 이 스튜디오 수강권 */
 export function useMembers(studioId: string) {
@@ -496,13 +511,14 @@ export function useMembers(studioId: string) {
     queryKey: ['members', studioId],
     enabled: !!studioId,
     queryFn: async (): Promise<MemberWithPasses[]> => {
-      const [peopleRes, passesRes] = await Promise.all([
+      const [peopleRes, passesRes, contacts] = await Promise.all([
         supabase
           .from('studio_members')
-          .select('role, memo, joined_at, user:users(*)')
+          .select(`role, memo, joined_at, user:users(${USER_COLUMNS})`)
           .eq('studio_id', studioId)
           .eq('status', 'active'),
         supabase.from('passes').select('*').eq('studio_id', studioId),
+        studioContacts(studioId),
       ]);
       if (peopleRes.error) throw toError(peopleRes.error);
       if (passesRes.error) throw toError(passesRes.error);
@@ -515,7 +531,7 @@ export function useMembers(studioId: string) {
       }
       return ((peopleRes.data ?? []) as unknown as MemberRow[])
         .filter((r) => r.user)
-        .map((r) => ({ ...toPerson(r), passes: passesByMember.get(r.user!.id) ?? [] }))
+        .map((r) => ({ ...toPerson(r, contacts), passes: passesByMember.get(r.user!.id) ?? [] }))
         .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
     },
   });
@@ -527,10 +543,10 @@ export function useMemberDetail(studioId: string, memberId: string | undefined) 
     queryKey: ['member', studioId, memberId],
     enabled: !!studioId && !!memberId,
     queryFn: async (): Promise<MemberDetail> => {
-      const [personRes, passesRes, bookingsRes] = await Promise.all([
+      const [personRes, passesRes, bookingsRes, contacts] = await Promise.all([
         supabase
           .from('studio_members')
-          .select('role, memo, joined_at, user:users(*)')
+          .select(`role, memo, joined_at, user:users(${USER_COLUMNS})`)
           .eq('studio_id', studioId)
           .eq('user_id', memberId!)
           .eq('status', 'active')
@@ -552,6 +568,7 @@ export function useMemberDetail(studioId: string, memberId: string | undefined) 
           .eq('member_id', memberId!)
           .order('created_at', { ascending: false })
           .limit(300),
+        studioContacts(studioId),
       ]);
 
       if (personRes.error) throw toError(personRes.error);
@@ -561,7 +578,7 @@ export function useMemberDetail(studioId: string, memberId: string | undefined) 
       if (!row?.user) throw new Error('이 스튜디오에 소속된 사람이 아닙니다.');
 
       return {
-        profile: toPerson(row),
+        profile: toPerson(row, contacts),
         passes: (passesRes.data ?? []) as Pass[],
         bookings: (bookingsRes.data ?? []) as unknown as MemberBooking[],
       };

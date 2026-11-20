@@ -27,6 +27,7 @@ const identities = {};
 const ident = (id, provider) => ({ id: `${id}-${provider}`, identity_id: `iid-${id}-${provider}`, user_id: id, provider, identity_data: {}, created_at: '2026-11-01T00:00:00Z' });
 const appMetaOf = (id) => ({ provider: id === 'k1' ? 'kakao' : 'email' });
 const extraPeople = ['최지우', '정민서', '한유진', '오세훈'].map((n, i) => ({ id: 'mm' + i, name: n, phone: `010-55${i}5-12${i}4`, email: `m${i}@x.com` }));
+const noContact = (u) => (u ? { ...u, phone: undefined, email: undefined } : u);
 const profileOf = (id) => {
   const e = Object.entries(users).find(([, u]) => u.id === id);
   if (e) return { ...e[1], email: e[0], created_at: '2026-03-02T01:00:00Z' };
@@ -240,6 +241,14 @@ http.createServer(async (req, res) => {
     const out = (rows) => send(200, single ? rows[0] ?? null : rows);
     const args = body ? JSON.parse(body) : {};
 
+    if (table === 'rpc/my_contact') { const u = profileOf(me); const row = { phone: u?.phone ?? null, email: u?.email ?? null }; return send(200, /pgrst\.object/.test(req.headers.accept ?? '') ? row : [row]); }
+    if (table === 'rpc/studio_contacts') {
+      rpcLog.push({ fn: 'studio_contacts', args: { me, ...args } });
+      const sid = args.p_studio_id;
+      const myRole = members.find((m) => m.studio_id === sid && m.user_id === me && m.status === 'active')?.role;
+      if (!['owner', 'manager', 'instructor'].includes(myRole)) return send(200, []);
+      return send(200, members.filter((m) => m.studio_id === sid && m.status === 'active').map((m) => { const u = profileOf(m.user_id); return { user_id: m.user_id, phone: u?.phone ?? null, email: ['owner', 'manager'].includes(myRole) ? u?.email ?? null : null }; }));
+    }
     if (table === 'rpc/get_public_studio_page') { const pp = publicPage(args.p_slug); return pp ? send(200, pp) : (res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' }), res.end('null')); }
     if (table === 'rpc/submit_trial_request') {
       rpcLog.push({ fn: 'submit_trial_request', args });
@@ -343,7 +352,9 @@ http.createServer(async (req, res) => {
         rpcLog.push({ fn: 'users_update', args: { id: eq(q.id), ...args } });
         return send(204, null);
       }
-      return out([profileOf(eq(q.id))].filter(Boolean));
+      // patch 019: users 표에서는 연락처를 못 읽는다
+      if (/phone|email|\*/.test(String(url.searchParams.get('select') ?? '*'))) return send(401, { code: '42501', message: 'permission denied for table users' });
+      return out([noContact(profileOf(eq(q.id)))].filter(Boolean));
     }
     if (table === 'studios') {
       if (req.method === 'PATCH') {
@@ -361,7 +372,8 @@ http.createServer(async (req, res) => {
       rows = rows.filter((m) => m.studio_id === eq(q.studio_id));
       if (q.user_id) rows = rows.filter((m) => m.user_id === eq(q.user_id));
       if ((q.role || '').startsWith('in.')) rows = rows.filter((m) => m.role !== 'member');
-      return out(rows.map((m) => ({ role: m.role, memo: m.memo, joined_at: m.joined_at, user: profileOf(m.user_id) })));
+      if (/users\(\*\)|users\([^)]*(phone|email)/.test(String(url.searchParams.get('select') ?? ''))) return send(401, { code: '42501', message: 'permission denied for table users' });
+      return out(rows.map((m) => ({ role: m.role, memo: m.memo, joined_at: m.joined_at, user: noContact(profileOf(m.user_id)) })));
     }
     if (table === 'passes' && q.id) return out(passes.filter((x) => x.id === eq(q.id)).map((x) => ({ ...x, member: { id: x.member_id, name: profileOf(x.member_id)?.name } })));
     if (table === 'pass_logs') return out(passLogs[eq(q.pass_id)] ?? []);

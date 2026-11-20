@@ -151,6 +151,57 @@ await tc('TC-S09', '소개 페이지 사진 저장소(studio-photos) 정책: 원
   return `정책 ${need.join('·')} 4개 모두 studio-photos + 자기 스튜디오 폴더로 제한`;
 });
 
+await tc('TC-S10', '조작한 앱(디버거·스크립트 주입)으로 일반 회원의 로그인 토큰을 그대로 써서 직원 기능을 직접 불러도 서버가 모두 거절하고, 표를 직접 읽어도 본인 것만 나온다', '직원 전용 함수 15개 모두 거절 · 다른 회원 이름으로 예약·남의 예약 취소 거절 · 표 조회: 사람 1명(본인)·수강권 1개(본인)·결제 0·체험 신청 0·소속 1행·푸시 토큰 0', async () => {
+  const m = U(2), other = U(3), o = U(1);
+  await as('authenticated', other, () => q(`select join_studio($1)`, [S.invite_code]));
+  const otherPass = (await as('authenticated', o, () => q(`select (issue_pass($1,$2,'group','타인 10회',10,current_date,current_date+30)).id as id`, [S.id, other])))[0].id;
+  const myPass = (await as('authenticated', m, () => q(`select id from passes where member_id=$1 limit 1`, [m])))[0].id;
+  const cls = (await as('authenticated', o, () => q(
+    `insert into classes(studio_id,title,instructor_id,starts_at,ends_at,max_capacity)
+     values ($1,'주입 시험 수업',$2,now()+interval '3 days',now()+interval '3 days 1 hour',4) returning id`, [S.id, o])))[0].id;
+  const otherBooking = (await as('authenticated', other, () => q(`select (book_class($1)).id as id`, [cls])))[0].id;
+  const myBooking = (await as('authenticated', m, () => q(`select (book_class($1)).id as id`, [cls])))[0].id;
+  await as('authenticated', o, () => q(`select * from submit_trial_request('x','x','x','','',true)`).catch(() => null));
+
+  const attacks = [
+    [`select issue_pass($1,$2,'group','공짜 100회',100,current_date,current_date+365)`, [S.id, m]],
+    [`select admin_adjust_pass($1,100,'주입')`, [myPass]],
+    [`select extend_pass($1,365,'주입')`, [myPass]],
+    [`select set_pass_active($1,false,'주입')`, [otherPass]],
+    [`select add_pass_payment($1,1,'cash',current_date,'주입')`, [myPass]],
+    [`select mark_attendance($1,'attended')`, [myBooking]],
+    [`select cancel_class($1)`, [cls]],
+    [`select set_member_role($1,$2,'owner')`, [S.id, m]],
+    [`select regenerate_invite_code($1)`, [S.id]],
+    [`select close_studio($1,'주입')`, [S.id]],
+    [`select close_studio_preview($1)`, [S.id]],
+    [`select request_studio_close($1,'주입')`, [S.id]],
+    [`select save_studio_page($1,'{"slug":"hacked-page","published":true}'::jsonb)`, [S.id]],
+    [`select book_class($1,$2)`, [cls, other]],  // 다른 회원 이름으로 예약(그 사람 수강권 차감)
+    [`select cancel_booking($1,true)`, [otherBooking]],
+  ];
+  const passed = [];
+  for (const [sql, args] of attacks) {
+    try { await as('authenticated', m, () => q(sql, args)); passed.push(sql); } catch { /* 거절 = 기대 */ }
+  }
+  assert.deepEqual(passed, [], '거절되지 않은 호출: ' + passed.join(' | '));
+  const c = async (sql) => (await as('authenticated', m, () => q(sql)))[0].c;
+  const seen = {
+    users: await c(`select count(*)::int c from users`),
+    passes: await c(`select count(*)::int c from passes`),
+    payments: await c(`select count(*)::int c from pass_payments`),
+    trials: await c(`select count(*)::int c from trial_requests`),
+    members: await c(`select count(*)::int c from studio_members`),
+    bookings: await c(`select count(*)::int c from bookings`),
+  };
+  await assert.rejects(as('authenticated', m, () => q(`select count(*) from push_tokens`)), /permission denied/);
+  assert.deepEqual(seen, { users: 1, passes: 1, payments: 0, trials: 0, members: 1, bookings: 1 });
+  // 남은 수강권 횟수도 그대로인지 (거절된 호출이 아무것도 바꾸지 않았는지)
+  const left = (await q(`select remaining_count r from passes where id=$1`, [myPass]))[0].r;
+  assert.equal(left, 9);
+  return `직원 전용·남의 데이터 호출 ${attacks.length}개 모두 거절, 수강권 그대로(9회) / 표 조회: 사람 ${seen.users}·수강권 ${seen.passes}·결제 ${seen.payments}·체험 신청 ${seen.trials}·소속 ${seen.members}·예약 ${seen.bookings}(모두 본인 것) · 푸시 토큰 표 거절`;
+});
+
 const passed = results.filter((r) => r.pass).length;
 console.log(`\n${passed}/${results.length} passed`);
 fs.writeFileSync(outPath, JSON.stringify({ results }, null, 2));

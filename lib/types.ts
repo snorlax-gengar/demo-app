@@ -91,7 +91,7 @@ export interface TimelineBooking {
   status: BookingStatus;
   created_at: string;
   /** passes: 출석부에서 회원별 잔여 횟수를 바로 보여주기 위해 함께 조회 */
-  member: (Pick<UserProfile, 'id' | 'name' | 'phone'> & { passes?: (PassLite & { studio_id: string })[] }) | null;
+  member: (Pick<UserProfile, 'id' | 'name'> & { passes?: (PassLite & { studio_id: string })[] }) | null;
 }
 
 export interface TimelineClass {

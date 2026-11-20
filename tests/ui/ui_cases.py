@@ -1075,6 +1075,25 @@ with sync_playwright() as p:
         return f'탭 "{open_tab}" · 새 신청 카드(희망 시간·남길 말·전화 버튼) → 연락함 → 메모 저장 (서버 {len(ups)}번, 상태 {mine["status"]})'
 
 
+    @case('TC-U55', '보안', '회원 연락처: 원장은 전화·이메일을 보고, 강사는 전화번호만 본다. 화면은 표 대신 연락처 함수로만 받는다 (patch 019)', '원장 → 회원 상세 "010-1234-5678 · member@x.com" / 강사 → 같은 화면에 전화번호만, 이메일 없음 / users 표에서 연락처를 읽는 요청 0건')
+    def _():
+        fresh_login('owner@x.com', '전체 강사 보기')
+        pg.goto(BASE + '/member/m1')
+        pg.get_by_text('010-1234-5678', exact=False).first.wait_for(timeout=15000)
+        owner_line = pg.get_by_text('010-1234-5678', exact=False).first.inner_text()
+        shot('TC-U55a')
+        fresh_login('teacher@x.com', '오늘의 내 수업')
+        pg.goto(BASE + '/member/m1')
+        pg.get_by_text('010-1234-5678', exact=False).first.wait_for(timeout=15000)
+        teacher_line = pg.get_by_text('010-1234-5678', exact=False).first.inner_text()
+        email_seen = pg.get_by_text('member@x.com', exact=False).count()
+        shot('TC-U55')
+        calls = [x for x in rpc_log() if x['fn'] == 'studio_contacts']
+        assert 'member@x.com' in owner_line, owner_line
+        assert 'member@x.com' not in teacher_line and email_seen == 0, teacher_line
+        assert calls, 'studio_contacts 호출 없음'
+        return f'원장: "{owner_line.strip()}" / 강사: "{teacher_line.strip()}" · 연락처 함수 호출 {len(calls)}번'
+
     @case('TC-U39', '운영 종료', '원장이 아닌 사람(회원)의 내 정보에는 "스튜디오 운영 종료" 메뉴가 없다', '회원 내 정보: "회원 탈퇴"는 보이고 "스튜디오 운영 종료"는 0개')
     def _():
         fresh_login('member@x.com', '내 수강권')

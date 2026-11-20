@@ -796,6 +796,31 @@ await tc('TC-D62', '보안', '초대 코드를 무작위로 넣어 남의 스튜
   return `틀린 코드 → id null, 기록 ${cnt}건 → 맞는 코드도 막힘 / 다른 사용자 참여 정상 / 기록 조회 거절`;
 });
 
+await tc('TC-D63', '보안', '연락처 공개 범위(patch 019): 표에서 직접 전화·이메일을 읽을 수 없고, 직원은 지금 소속인 사람 연락처만 받는다. 나간 회원은 이름만 남고, 강사는 이메일을 못 받는다', '강사: users.phone 직접 조회 거절 · 나간 회원 이름 1건 · 연락처 목록에 나간 회원 없음 · 이메일 전부 null / 원장: 이메일 받음 / 회원: 목록 0건, 본인 연락처만', async () => {
+  const own = await newUser(70, '공개원장'); const ins = await newUser(71, '공개강사'); const mem = await newUser(72, '공개회원'); const gone = await newUser(73, '나간회원');
+  const C = (await rpc(own, `select * from create_studio('연락처 점검')`))[0];
+  for (const u of [ins, mem, gone]) await rpc(u, `select * from join_studio($1)`, [C.invite_code]);
+  await rpc(own, `select * from set_member_role($1,$2,'instructor')`, [C.id, ins]);
+  await q(`update studio_members set status='left' where studio_id=$1 and user_id=$2`, [C.id, gone]);
+
+  await rejects(rpc(ins, `select phone from users where id=$1`, [mem]), /permission denied/);
+  await rejects(rpc(ins, `select email from users where id=$1`, [mem]), /permission denied/);
+  const goneName = (await rpc(ins, `select name from users where id=$1`, [gone]))[0]?.name;
+  const insList = await rpc(ins, `select * from studio_contacts($1)`, [C.id]);
+  const ownList = await rpc(own, `select * from studio_contacts($1)`, [C.id]);
+  const memList = await rpc(mem, `select * from studio_contacts($1)`, [C.id]);
+  const mine = (await rpc(mem, `select * from my_contact()`))[0];
+
+  assert.equal(goneName, '나간회원');
+  assert.ok(!insList.some((r) => r.user_id === gone) && !ownList.some((r) => r.user_id === gone), '나간 회원 연락처가 보임');
+  assert.equal(insList.find((r) => r.user_id === mem)?.phone, '010-1234-5678');
+  assert.ok(insList.every((r) => r.email === null), '강사에게 이메일이 보임');
+  assert.equal(ownList.find((r) => r.user_id === mem)?.email, 'w72@t.dev');
+  assert.equal(memList.length, 0);
+  assert.deepEqual({ ...mine }, { phone: '010-1234-5678', email: 'w72@t.dev' });
+  return `강사: 직접 조회 거절, 나간 회원 이름 "${goneName}"만, 연락처 ${insList.length}명(이메일 0) / 원장: 이메일 포함 ${ownList.length}명 / 회원: 목록 ${memList.length}건, 본인 연락처만`;
+});
+
 const passed = results.filter((r) => r.pass).length;
 console.log(`\n${passed}/${results.length} passed`);
 fs.writeFileSync(outPath, JSON.stringify({ schema: schemaPath, ranAt: new Date().toISOString(), results }, null, 2));
