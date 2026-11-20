@@ -16,6 +16,8 @@ export default function AdminLayout() {
       <Stack.Screen name="pass/new" />
       <Stack.Screen name="pass/[id]" />
       <Stack.Screen name="close-studio" />
+      <Stack.Screen name="studio-page" />
+      <Stack.Screen name="trials" />
     </Stack>
   );
 }

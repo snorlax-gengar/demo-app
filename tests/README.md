@@ -4,7 +4,7 @@
 
 ## DB 규칙 테스트 (`tests/db`)
 `supabase/schema.sql` 을 메모리 Postgres(PGlite)에 설치하고, 원장·실장·강사·회원 계정으로
-예약·취소·대기 승격·폐강·출석·권한(RLS)을 검증합니다. 케이스 ID: TC-D01 ~ TC-D57 (+ patch_existing.mjs TC-D29, patch007.mjs TC-D36).
+예약·취소·대기 승격·폐강·출석·권한(RLS)을 검증합니다. 케이스 ID: TC-D01 ~ TC-D61 (+ patch_existing.mjs TC-D29, patch007.mjs TC-D36).
 
 ```bash
 cd tests/db
@@ -17,13 +17,16 @@ node patch_existing.mjs <예전 schema.sql> d29.json ../../supabase/patches/005_
 ```
 
 ## 화면 테스트 (`tests/ui`)
-앱을 웹으로 빌드해 가짜 Supabase 서버(`mock.mjs`)에 연결하고 Playwright 로 클릭·캡처합니다. 케이스 ID: TC-U01 ~ TC-U43.
+앱을 웹으로 빌드해 가짜 Supabase 서버(`mock.mjs`)에 연결하고 Playwright 로 클릭·캡처합니다. 케이스 ID: TC-U01 ~ TC-U53 (TC-U49~U52 는 공개 소개 페이지 `site/` 를 함께 띄워야 함).
 
 ```bash
 # 1) 가짜 서버 주소로 웹 빌드
 EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 EXPO_PUBLIC_SUPABASE_ANON_KEY=anon npx expo export -p web --output-dir /tmp/dist
 # 2) 가짜 서버 실행 (빌드 결과도 함께 서빙)
 node tests/ui/mock.mjs /tmp/dist
+# 2-1) 공개 소개 페이지(서버) 빌드·실행 → http://127.0.0.1:8090/s/demo-pilates
+(cd site && EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 EXPO_PUBLIC_SUPABASE_ANON_KEY=anon npx expo export -p web --output-dir dist \
+  && EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 EXPO_PUBLIC_SUPABASE_ANON_KEY=anon npx expo serve --port 8090)
 # 3) 다른 터미널에서 (pip install playwright && playwright install chromium)
 python tests/ui/ui_cases.py tests/ui/shots ui.json
 ```

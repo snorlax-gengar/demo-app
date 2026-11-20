@@ -1,12 +1,13 @@
 // 스토어 제출용 공개 웹페이지 생성: 개인정보 처리방침·이용약관·계정 삭제 안내
 //   (Google Play 는 앱 밖에서 열리는 처리방침 URL 과 '계정 삭제 요청' 웹 링크를 요구한다)
-// usage: node --experimental-strip-types scripts/build-legal-site.mjs [출력폴더=public-site]
+// usage: node --experimental-strip-types scripts/build-legal-site.mjs [출력폴더=site/public]
+//   site/ 는 EAS Hosting 서버 프로젝트 (/s/<주소> 스튜디오 소개 페이지 포함) — 배포: cd site && npm run deploy
 // 내용은 앱과 같은 lib/legal.ts 에서 가져오므로, 운영자 정보를 채운 뒤 다시 실행하면 된다.
 import fs from 'node:fs';
 import path from 'node:path';
 import { LEGAL_DOCS, LEGAL_INFO } from '../lib/legal.ts';
 
-const out = path.resolve(process.argv[2] ?? 'public-site');
+const out = path.resolve(process.argv[2] ?? 'site/public');
 fs.mkdirSync(out, { recursive: true });
 // 앱과 같은 아이콘을 페이지 로고·파비콘으로 복사
 const rootDir = path.resolve(path.dirname(new URL(import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, '$1'), '..');
@@ -47,6 +48,8 @@ const PRIVACY_EN = `<h2>Privacy Policy — English summary</h2>
 Google user data: if you sign in with Google, we receive only your name, email address and profile picture. We do not access any other Google data (Drive, Gmail, Contacts, etc.). This data is used only to identify you, sign you in and show your name to the studio you join. It is never sold, used for advertising or AI training, or shared with third parties, except that staff of a studio you joined can see it. ${esc(LEGAL_INFO.appName)}'s use of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.
 
 Storage and processors: data is stored by Supabase Inc. (servers in Singapore) and push notifications are delivered via Expo (650 Industries, Inc.), over encrypted connections with row-level access control.
+
+Trial class requests: on a studio's public intro page, visitors who are not members can request a trial class by leaving their name, phone number and optional preferred time and message, with explicit consent. This is delivered only to that studio's owner and managers, and is deleted automatically after 180 days or immediately when the studio closes.
 
 Deletion: you can delete your account in the app (My info → Delete account) or request deletion at ${esc(LEGAL_INFO.email)}. Personal data is deleted immediately; booking and payment records remain only in anonymized form ("Withdrawn member"). You can also revoke ${esc(LEGAL_INFO.appName)}'s access at myaccount.google.com/permissions.
 

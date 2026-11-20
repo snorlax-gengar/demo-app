@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PasswordInput } from '@/components/PasswordInput';
 
 import { appleAvailable, signInWithApple, signInWithBrowser, type SocialProvider, type SocialResult } from '@/lib/socialAuth';
 import { supabase } from '@/lib/supabase';
@@ -102,12 +103,11 @@ export default function LoginScreen() {
         />
 
         <Text className="mb-2 mt-4 text-sm font-semibold text-stone-600">비밀번호</Text>
-        <TextInput
+        <PasswordInput
           value={password}
           onChangeText={setPassword}
           placeholder="비밀번호"
           placeholderTextColor="#A8A29E"
-          secureTextEntry
           textContentType="password"
           returnKeyType="go"
           onSubmitEditing={onSubmit}

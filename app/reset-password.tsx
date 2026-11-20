@@ -1,11 +1,12 @@
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { parseAuthLink, resetPasswordWithLink, type AuthLinkParams } from '@/lib/authLinks';
 import { showDialog } from '@/lib/dialog';
+import { PasswordInput } from '@/components/PasswordInput';
 
 /** 비밀번호 재설정 메일의 링크로 열리는 화면 (로그인 여부와 상관없이 열림) */
 export default function ResetPasswordScreen() {
@@ -62,9 +63,9 @@ export default function ResetPasswordScreen() {
           <>
             <Text className="mt-2 text-base text-stone-500">앞으로 로그인할 때 쓸 비밀번호를 정해 주세요. (6자 이상)</Text>
             <Text className="mb-2 mt-6 text-sm font-semibold text-stone-600">새 비밀번호</Text>
-            <TextInput value={pw} onChangeText={setPw} placeholder="새 비밀번호" placeholderTextColor="#A8A29E" secureTextEntry textContentType="newPassword" className={field} />
+            <PasswordInput value={pw} onChangeText={setPw} placeholder="새 비밀번호" placeholderTextColor="#A8A29E" textContentType="newPassword" className={field} />
             <Text className="mb-2 mt-4 text-sm font-semibold text-stone-600">한 번 더</Text>
-            <TextInput value={pw2} onChangeText={setPw2} placeholder="새 비밀번호 확인" placeholderTextColor="#A8A29E" secureTextEntry textContentType="newPassword" onSubmitEditing={submit} className={field} />
+            <PasswordInput value={pw2} onChangeText={setPw2} placeholder="새 비밀번호 확인" placeholderTextColor="#A8A29E" textContentType="newPassword" onSubmitEditing={submit} className={field} />
             {pw2.length > 0 && pw !== pw2 ? <Text className="mt-2 text-sm text-rose-600">두 비밀번호가 달라요.</Text> : null}
             {error ? <Text className="mt-3 text-sm text-rose-600">{error}</Text> : null}
             <Pressable

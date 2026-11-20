@@ -10,6 +10,8 @@ from playwright.sync_api import sync_playwright
 
 OUT, RESULT = sys.argv[1], sys.argv[2]
 BASE = 'http://127.0.0.1:54321'
+# 처리방침에 나와야 할 문의 주소는 lib/legal.ts 에서 읽는다 (테스트 코드에 직접 적지 않음)
+LEGAL_EMAIL = re.search(r"email: '([^']+)'", open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'lib', 'legal.ts'), encoding='utf-8').read()).group(1)
 results, native_dialogs, errors = [], [], []
 
 
@@ -503,7 +505,7 @@ with sync_playwright() as p:
         pg.get_by_label('뒤로').locator('visible=true').click()
         pg.get_by_role('link', name='개인정보 처리방침').last.click()
         pg.get_by_text('8. 개인정보 보호책임자').wait_for(timeout=15000)
-        holder = pg.get_by_text('gengarileo@gmail.com', exact=False).locator('visible=true').count()
+        holder = pg.get_by_text(LEGAL_EMAIL, exact=False).locator('visible=true').count()
         leftover = pg.locator('text=/\\[(운영자명|문의 이메일|시행일|리전)/').count()
         shot('TC-U24')
         pg.get_by_label('뒤로').locator('visible=true').click()
@@ -822,6 +824,250 @@ with sync_playwright() as p:
         for e in [e for e in errors if 'status of 4' in e or 'code verifier' in e.lower()]:
             errors.remove(e)
         return '만료/다른 기기 코드 → 안내 후 로그인 화면 (앱 멈춤 없음)'
+
+    SITE = 'http://127.0.0.1:8090'
+    TINY_PNG = '/tmp/piq_photo.png'
+    import base64 as _b64
+    open(TINY_PNG, 'wb').write(_b64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEklEQVR42mNk+M+AFzCOKhhVAAAbsgP9+xsE8gAAAABJRU5ErkJggg=='))
+    rpc_log = lambda: json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read())  # noqa: E731
+    trials_db = lambda: json.loads(urllib.request.urlopen(BASE + '/__trials').read())  # noqa: E731
+
+    def close_dialog():
+        pg.get_by_role('button', name='확인').last.click()
+        pg.wait_for_timeout(300)
+
+    @case('TC-U44', '로그인', '비밀번호 입력칸의 눈 아이콘을 누르면 입력한 비밀번호가 보이고, 다시 누르면 가려진다 (로그인·가입·재설정 공통)', '처음 type=password·"비밀번호 보기" → 누르면 일반 글자칸·"비밀번호 숨기기" → 다시 누르면 password / 가입 화면 비밀번호칸에도 눈 아이콘')
+    def _():
+        pg.goto(BASE + '/')
+        pg.evaluate('localStorage.clear()')
+        pg.goto(BASE + '/')
+        box = pg.locator('input[placeholder="비밀번호"]')
+        box.wait_for(timeout=30000)
+        box.fill('piq-secret-123')
+        t0 = box.get_attribute('type')
+        pg.get_by_label('비밀번호 보기').first.click()
+        t1 = box.get_attribute('type')
+        val = box.input_value()
+        shot('TC-U44a')
+        pg.get_by_label('비밀번호 숨기기').first.click()
+        t2 = box.get_attribute('type')
+        pg.goto(BASE + '/signup')
+        pg.wait_for_timeout(1200)
+        eyes = pg.get_by_label('비밀번호 보기').locator('visible=true').count()
+        shot('TC-U44')
+        assert t0 == 'password' and t1 in ('text', None) and t2 == 'password', (t0, t1, t2)  # type 없음 = 일반 글자칸
+        assert val == 'piq-secret-123' and eyes == 1, (val, eyes)
+        return f'type {t0} → {t1 or "text"}(입력값 그대로 보임) → {t2} · 가입 화면 비밀번호칸 눈 아이콘 {eyes}개'
+
+    @case('TC-U45', '알림', '알림함을 열어 둔 채 새 알림이 오면, 다시 불러올 때 바로 읽음 처리된다 (처음 한 번만 읽음 처리하던 문제 수정)', '알림함 열림(모두 읽음) → 새 알림 도착 → 화면 다시 불러오기 → 새 알림 표시 + 읽음 처리 요청 1번 더 → 종 배지 없음')
+    def _():
+        fresh_login('member@x.com', '내 수강권')
+        pg.get_by_label('알림', exact=True).first.click()
+        pg.get_by_text('대기에서 예약이 확정됐어요').wait_for(timeout=15000)
+        pg.wait_for_timeout(1500)
+        before = len([x for x in rpc_log() if x['fn'] == 'mark_notifications_read'])
+        urllib.request.urlopen(BASE + '/__notify?user=m1').read()
+        pg.evaluate("""() => { const set = (v) => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => v });
+            Object.defineProperty(document, 'hidden', { configurable: true, get: () => v === 'hidden' }); document.dispatchEvent(new Event('visibilitychange')); };
+            set('hidden'); set('visible'); }""")
+        pg.get_by_text('방금 도착한 알림').wait_for(timeout=15000)
+        dot = pg.get_by_label('새 알림').locator('visible=true').count()
+        shot('TC-U45a')
+        pg.wait_for_timeout(2500)
+        after = len([x for x in rpc_log() if x['fn'] == 'mark_notifications_read'])
+        pg.get_by_label('뒤로').click()
+        pg.wait_for_selector('text=내 수강권', timeout=15000)
+        pg.wait_for_timeout(800)
+        badge = pg.locator('[aria-label$="새로 옴"]').locator('visible=true').count()
+        shot('TC-U45')
+        assert after == before + 1, (before, after)
+        assert badge == 0, badge
+        return f'새 알림 표시(새 표시 {dot}개) → 약 0.8초 뒤 읽음 처리 요청 {before}→{after}번 → 종 배지 0개'
+
+    @case('TC-U46', '소개 페이지', '원장 내 정보에 "소개 페이지(공개 중)"와 "체험 신청(새 신청 수)"이 보이고, 소개 페이지 편집 화면에 저장된 내용과 공개 주소가 나온다', '내 정보 → 소개 페이지 "공개 중" · 체험 신청 배지 1 → 편집 화면: piq.expo.app/s/demo-pilates · 링크 공유/페이지 열기 · 한 줄 소개 등 채워짐 · 대표 사진 1장')
+    def _():
+        fresh_login('owner@x.com', '전체 강사 보기')
+        pg.get_by_text('내 정보', exact=True).last.click()
+        row = pg.get_by_label('스튜디오 소개 페이지')
+        row.wait_for(timeout=15000)
+        row.scroll_into_view_if_needed()
+        pg.get_by_text('공개 중 · 링크를 공유해 홍보하세요').wait_for(timeout=10000)
+        badge = pg.get_by_label('체험 신청').inner_text()
+        pg.wait_for_timeout(300)
+        shot('TC-U46a')
+        row.click()
+        pg.get_by_label('소개 페이지 주소').wait_for(timeout=15000)
+        url = pg.get_by_label('소개 페이지 주소').inner_text()
+        head = pg.get_by_label('한 줄 소개').input_value()
+        slug = pg.get_by_label('주소 이름').input_value()
+        cover = pg.get_by_label('대표 사진').count()
+        share = pg.get_by_label('링크 공유').count()
+        pg.wait_for_timeout(400)
+        shot('TC-U46', full=True)
+        assert '1' in badge.split(), badge
+        assert url == 'piq.expo.app/s/demo-pilates' and slug == 'demo-pilates', (url, slug)
+        assert head == '소수 정예 기구 필라테스' and cover == 1 and share == 1, (head, cover, share)
+        return f'내 정보: 공개 중 · 체험 신청 새 1건 → 편집 화면 주소 "{url}", 한 줄 소개 "{head}", 대표 사진 {cover}장'
+
+    @case('TC-U47', '소개 페이지', '주소 이름·카카오 링크가 규칙에 맞지 않으면 저장하지 않고 안내하며, 대문자·한글·공백은 입력할 때 자동으로 걸러진다', '"My Studio!" 입력 → "mystudio" / "ab" → "주소 이름은…3~30자" 안내, 서버 저장 0번 / 카카오 링크 http://evil → 안내, 저장 0번')
+    def _():
+        box = pg.get_by_label('주소 이름')
+        box.fill('My Studio!한글')
+        cleaned = box.input_value()
+        box.fill('ab')
+        pg.get_by_label('소개 페이지 저장').click()
+        pg.get_by_text('주소 이름은 영어 소문자', exact=False).wait_for(timeout=5000)
+        shot('TC-U47a')
+        close_dialog()
+        box.fill('demo-pilates')
+        pg.get_by_label('카카오톡 링크').fill('http://evil.example/x')
+        pg.get_by_label('소개 페이지 저장').click()
+        pg.get_by_text('카카오톡 링크는', exact=False).wait_for(timeout=5000)
+        shot('TC-U47')
+        close_dialog()
+        pg.get_by_label('카카오톡 링크').fill('https://open.kakao.com/o/demo')
+        saves = [x for x in rpc_log() if x['fn'] == 'save_studio_page']
+        assert cleaned == 'mystudio', cleaned
+        assert not saves, saves
+        return f'"My Studio!한글" → "{cleaned}" · 짧은 주소/잘못된 카카오 링크 → 안내만, 서버 저장 0번'
+
+    @case('TC-U48', '소개 페이지', '사진을 올리고 한 줄 소개를 고쳐 저장하면, 사진이 스토리지(스튜디오 폴더)에 올라가고 저장 결과와 공개 주소를 안내한다', '사진 추가 → 파일 선택 → 사진 2장 → 한 줄 소개 수정(<b> 태그 포함) → 저장 → "저장했어요 · 공개 중" + 주소 / 서버: 업로드 1번(S1/…jpg) · 저장 1번(사진 2장, 새 한 줄 소개)')
+    def _():
+        with pg.expect_file_chooser(timeout=10000) as fc:
+            pg.get_by_label('사진 추가').click()
+        fc.value.set_files(TINY_PNG)
+        pg.get_by_label('사진 2', exact=True).wait_for(timeout=20000)
+        pg.get_by_label('한 줄 소개').fill('<b>소수</b> 정예 & 1:1 "맞춤"')
+        pg.wait_for_timeout(300)
+        shot('TC-U48a', full=True)
+        pg.get_by_label('소개 페이지 저장').click()
+        pg.get_by_text('저장했어요 · 공개 중').wait_for(timeout=10000)
+        msg = pg.get_by_text('piq.expo.app/s/demo-pilates', exact=False).last.inner_text()
+        pg.wait_for_timeout(300)
+        shot('TC-U48')
+        close_dialog()
+        log = rpc_log()
+        up = [x for x in log if x['fn'] == 'storage_upload']
+        sv = [x for x in log if x['fn'] == 'save_studio_page']
+        assert len(up) == 1 and up[0]['args']['key'].startswith('S1/') and up[0]['args']['key'].endswith('.jpg'), up
+        assert len(sv) == 1 and len(sv[0]['args']['p_page']['photos']) == 2 and sv[0]['args']['p_page']['headline'].startswith('<b>'), sv
+        return f'업로드 {up[0]["args"]["key"]} → 저장 1번(사진 2장) → 안내 "{msg.strip()[:40]}"'
+
+    # ---- 공개 페이지 (piq.expo.app/s/<주소>) : 로그인 없는 방문자 ----
+    sp = c.new_page()
+    sp.on('pageerror', lambda e: errors.append('site pageerror: ' + str(e)[:300]))
+    sp.on('console', lambda m: errors.append('site console: ' + m.text[:300]) if m.type == 'error' else None)
+    sshot = lambda cid, full=False: sp.screenshot(path=f'{OUT}/{cid}.png', full_page=full)  # noqa: E731
+
+    @case('TC-U49', '공개 페이지', '카카오톡처럼 자바스크립트 없이 읽어도 스튜디오별 미리보기 정보(og 제목·설명·대표 사진·주소)가 들어 있고, 원장이 쓴 글의 태그는 글자로만 보인다', 'GET /s/demo-pilates → 200 · og:title "데모 필라테스 · 필라테스" · og:image 대표 사진 · og:url · 보안 헤더(CSP) / 화면: 사진·시간표·운영 시간·지도 링크, "<b>소수</b>" 가 굵게 바뀌지 않고 글자로 보임')
+    def _():
+        req = urllib.request.Request(SITE + '/s/demo-pilates', headers={'User-Agent': 'facebookexternalhit/1.1 kakaotalk-scrap/1.0'})
+        r = urllib.request.urlopen(req)
+        html = r.read().decode()
+        og = dict(re.findall(r'<meta property="og:([a-z_]+)" content="([^"]*)"', html))
+        csp = r.headers.get('content-security-policy', '')
+        sp.goto(SITE + '/s/demo-pilates')
+        sp.get_by_role('heading', name='데모 필라테스').wait_for(timeout=15000)
+        bold = sp.locator('p.headline b').count()
+        headline = sp.locator('p.headline').inner_text()
+        imgs = sp.locator('.photos img').count()
+        sched = sp.locator('.cls').count()
+        maps = sp.get_by_text('네이버 지도에서 보기').count()
+        sp.wait_for_timeout(300)
+        sshot('TC-U49', full=True)
+        assert r.status == 200 and og.get('title') == '데모 필라테스 · 필라테스', og
+        assert og.get('image', '').endswith('/storage/v1/object/public/studio-photos/S1/cover.jpg') and og.get('url', '').endswith('/s/demo-pilates'), og
+        assert '&lt;b&gt;' in html and '<b>소수' not in html, 'escape'
+        assert "script-src 'nonce-" in csp and "frame-ancestors 'none'" in csp, csp
+        assert bold == 0 and headline.startswith('<b>소수</b>') and imgs == 2 and sched >= 1 and maps == 1, (bold, headline, imgs, sched, maps)
+        return f'og:title "{og["title"]}", og:image 대표 사진, og:description "{og["description"][:20]}…" · CSP 있음 · 사진 {imgs}장·시간표 {sched}개 · 태그는 글자로 표시'
+
+    @case('TC-U50', '공개 페이지', '체험 신청 폼: 이름·연락처·동의가 빠지면 서버에 보내지 않고 바로 안내한다', '빈 채로 신청 → "이름을 적어 주세요." / 연락처 "010" → "전화번호를 정확히" / 동의 안 함 → "동의해 주세요." / 서버 요청 0번')
+    def _():
+        sp.get_by_role('link', name='체험 수업 신청').click()
+        submit = sp.locator('#f-submit')
+        msgs = []
+        submit.click(); msgs.append(sp.locator('#f-msg-box').inner_text())
+        sp.fill('#f-name', '테스트 방문자')
+        sp.fill('#f-phone', '010')
+        submit.click(); msgs.append(sp.locator('#f-msg-box').inner_text())
+        sp.fill('#f-phone', '010-4444-9999')
+        submit.click(); msgs.append(sp.locator('#f-msg-box').inner_text())
+        sp.wait_for_timeout(200)
+        sshot('TC-U50')
+        calls = [x for x in rpc_log() if x['fn'] == 'submit_trial_request']
+        assert msgs == ['이름을 적어 주세요.', '연락받을 전화번호를 정확히 적어 주세요.', '개인정보 수집·이용에 동의해 주세요.'], msgs
+        assert not calls, calls
+        return ' → '.join(f'"{m}"' for m in msgs) + ' · 서버 요청 0번'
+
+    @case('TC-U51', '공개 페이지', '동의하고 신청하면 저장되고 완료 안내가 나오며, 같은 번호로 다시 신청하면 막고, 숨김칸(봇)이 채워진 신청은 저장하지 않는다', '동의 → 신청하기 → "신청했어요!" · 신청 목록 +1(번호는 숫자만) / 같은 번호 재신청 → "이미 신청했어요" / 숨김칸 채운 신청 → 성공처럼 보이지만 저장 0건')
+    def _():
+        n0 = len(trials_db())
+        sp.fill('#f-pref', '평일 저녁 7시 이후')
+        sp.fill('#f-msg', '처음이에요')
+        sp.check('#f-consent')
+        sp.locator('#f-submit').click()
+        sp.get_by_text('신청했어요!', exact=False).wait_for(timeout=10000)
+        sp.wait_for_timeout(200)
+        sshot('TC-U51a')
+        db = trials_db()
+        mine = db[0]
+        # 같은 번호로 다시
+        sp.reload(); sp.fill('#f-name', '테스트 방문자'); sp.fill('#f-phone', '01044449999'); sp.check('#f-consent'); sp.locator('#f-submit').click()
+        sp.get_by_text('이미 신청했어요', exact=False).wait_for(timeout=10000)
+        sshot('TC-U51b')
+        errors[:] = [e for e in errors if not ('site console' in e and 'status of 400' in e)]  # 중복 신청 거절(400)은 의도된 응답
+        # 봇: 숨김칸을 채움
+        sp.reload(); sp.fill('#f-name', '봇'); sp.fill('#f-phone', '01012120000'); sp.check('#f-consent')
+        sp.evaluate("document.getElementById('f-company').value = 'spam inc'")
+        sp.locator('#f-submit').click()
+        sp.get_by_text('신청했어요!', exact=False).wait_for(timeout=10000)
+        sshot('TC-U51')
+        n1 = len(trials_db())
+        assert len(db) == n0 + 1 and mine['phone'] == '01044449999' and mine['name'] == '테스트 방문자' and mine['status'] == 'new', mine
+        assert n1 == n0 + 1, (n0, n1)
+        return f'신청 저장(번호 {mine["phone"][:3]}-****-{mine["phone"][-4:]}, 상태 new) → 같은 번호 재신청 차단 → 봇 신청 저장 0건 (목록 {n0}→{n1})'
+
+    @case('TC-U52', '공개 페이지', '없는 주소·비공개 페이지·잘못된 주소 모양은 "페이지를 찾을 수 없어요"(404)로 보이고 검색에 노출되지 않는다', '/s/no-such-studio → 404 + 안내 + noindex / /s/<script> 모양 → 404')
+    def _():
+        codes = []
+        for path in ['/s/no-such-studio', '/s/%3Cscript%3E']:
+            try:
+                urllib.request.urlopen(SITE + path)
+                codes.append(200)
+            except urllib.error.HTTPError as e:  # noqa: PERF203
+                codes.append(e.code)
+                body = e.read().decode()
+        sp.goto(SITE + '/s/no-such-studio')
+        sp.get_by_text('페이지를 찾을 수 없어요').first.wait_for(timeout=10000)
+        robots = sp.locator('meta[name="robots"]').get_attribute('content')
+        sshot('TC-U52')
+        errors[:] = [e for e in errors if not ('site console' in e and '404' in e)]
+        assert codes == [404, 404] and robots == 'noindex' and '<script>' not in body, (codes, robots)
+        return f'없는 주소 {codes[0]}, 잘못된 모양 {codes[1]} · 안내 화면 · robots=noindex'
+
+    @case('TC-U53', '체험 신청', '원장 앱의 체험 신청 화면에 방금 들어온 신청이 보이고, 상태를 "연락함"으로 바꾸고 메모를 저장할 수 있다', '체험 신청 → 진행 중 3건(새 신청 "테스트 방문자" 맨 위, 희망 시간·남길 말·전화/문자 버튼) → 연락함 → 메모 저장 / 서버: update_trial_request(contacted, 메모)')
+    def _():
+        sp.close()
+        pg.goto(BASE + '/trials')
+        card = pg.get_by_label('체험 신청 테스트 방문자')
+        card.wait_for(timeout=15000)
+        open_tab = pg.get_by_role('tab').first.inner_text()
+        txt = card.inner_text()
+        calls = pg.get_by_label('테스트 방문자에게 전화').count()
+        shot('TC-U53a', full=True)
+        card.get_by_role('radio', name='연락함').click()
+        pg.wait_for_timeout(800)
+        pg.get_by_label('테스트 방문자 메모').fill('토요일 10시 체험 안내함')
+        pg.get_by_label('테스트 방문자 메모 저장').click()
+        pg.wait_for_timeout(1000)
+        shot('TC-U53')
+        ups = [x for x in rpc_log() if x['fn'] == 'update_trial_request']
+        mine = [t for t in trials_db() if t['name'] == '테스트 방문자'][0]
+        assert '평일 저녁 7시 이후' in txt and '처음이에요' in txt and calls == 1, txt
+        assert ups and ups[0]['args']['p_status'] == 'contacted' and mine['memo'] == '토요일 10시 체험 안내함' and mine['status'] == 'contacted', (ups, mine)
+        return f'탭 "{open_tab}" · 새 신청 카드(희망 시간·남길 말·전화 버튼) → 연락함 → 메모 저장 (서버 {len(ups)}번, 상태 {mine["status"]})'
+
 
     @case('TC-U39', '운영 종료', '원장이 아닌 사람(회원)의 내 정보에는 "스튜디오 운영 종료" 메뉴가 없다', '회원 내 정보: "회원 탈퇴"는 보이고 "스튜디오 운영 종료"는 0개')
     def _():

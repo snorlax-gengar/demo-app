@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useIsFocused, useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 
 import { BRAND, EmptyView, ErrorView, LoadingView, Screen } from '@/components/ui';
@@ -20,6 +20,7 @@ const KIND_ICON: Record<string, { name: keyof typeof Ionicons.glyphMap; color: s
   close_request_new: { name: 'document-text', color: '#B45309' },
   close_request_approved: { name: 'checkmark-done-circle', color: '#0B7A4D' },
   close_request_rejected: { name: 'close-circle', color: '#E11D48' },
+  trial_request: { name: 'sparkles', color: '#0B7A4D' },
 };
 
 /** 알림함: 예약 확정·대기 승격·취소·폐강·전날 알림. 열면 모두 읽음 처리 */
@@ -29,16 +30,16 @@ export default function NotificationsScreen() {
   const pull = usePullRefresh(query.refetch);
   const markRead = useMarkNotificationsRead();
   const pushStatus = usePushStore((s) => s.status);
-  const marked = useRef(false);
+  const isFocused = useIsFocused();
 
   const unread = (query.data ?? []).filter((n) => !n.read_at).length;
+  const { mutate: markAllRead, isPending: marking } = markRead;
   useEffect(() => {
-    // 화면을 연 뒤 잠깐 '새 알림' 표시를 보여주고 읽음 처리
-    if (marked.current || !query.data || unread === 0) return;
-    marked.current = true;
-    const t = setTimeout(() => markRead.mutate(undefined), 1500);
+    // 알림함을 보고 있는 동안 읽지 않은 알림이 있으면(열어 둔 채 새로 온 것 포함) 잠깐 '새 알림' 표시 후 읽음 처리
+    if (!isFocused || !query.data || unread === 0 || marking) return;
+    const t = setTimeout(() => markAllRead(undefined), 800);
     return () => clearTimeout(t);
-  }, [query.data, unread, markRead]);
+  }, [isFocused, query.data, unread, marking, markAllRead]);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 

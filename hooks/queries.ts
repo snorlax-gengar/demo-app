@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { dayjs, type Dayjs } from '@/lib/date';
 import type { PassProduct, PassProductInput } from '@/lib/products';
 import type { RevenueRow } from '@/lib/revenue';
+import type { StudioPage, StudioPageInput, TrialRequest, TrialStatus } from '@/lib/studioPage';
 import { supabase } from '@/lib/supabase';
 import type {
   Booking,
@@ -888,5 +889,60 @@ export function useCancelStudioCloseRequest() {
       return data as CloseRequest;
     },
     onSettled: (_d, _e, vars) => queryClient.invalidateQueries({ queryKey: ['close-studio-preview', vars.studioId] }),
+  });
+}
+
+// ---------- 스튜디오 소개 페이지 · 체험 신청 (원장·실장, 패치 016) ----------
+export function useStudioPage(studioId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['studio-page', studioId],
+    enabled: enabled && !!studioId,
+    queryFn: async (): Promise<StudioPage | null> => {
+      const { data, error } = await supabase.from('studio_pages').select('*').eq('studio_id', studioId).maybeSingle();
+      if (error) throw toError(error);
+      return (data as StudioPage | null) ?? null;
+    },
+  });
+}
+
+export function useSaveStudioPage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { studioId: string; page: StudioPageInput }): Promise<StudioPage> => {
+      const { data, error } = await supabase.rpc('save_studio_page', { p_studio_id: vars.studioId, p_page: vars.page });
+      if (error) throw toError(error);
+      return data as StudioPage;
+    },
+    onSuccess: (data, vars) => queryClient.setQueryData(['studio-page', vars.studioId], data),
+  });
+}
+
+export function useTrialRequests(studioId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['trial-requests', studioId],
+    enabled: enabled && !!studioId,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<TrialRequest[]> => {
+      const { data, error } = await supabase
+        .from('trial_requests')
+        .select('id, studio_id, name, phone, preferred, message, status, memo, handled_at, created_at')
+        .eq('studio_id', studioId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw toError(error);
+      return (data ?? []) as TrialRequest[];
+    },
+  });
+}
+
+export function useUpdateTrialRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { studioId: string; id: string; status: TrialStatus; memo?: string | null }): Promise<TrialRequest> => {
+      const { data, error } = await supabase.rpc('update_trial_request', { p_id: vars.id, p_status: vars.status, p_memo: vars.memo ?? null });
+      if (error) throw toError(error);
+      return data as TrialRequest;
+    },
+    onSettled: (_d, _e, vars) => queryClient.invalidateQueries({ queryKey: ['trial-requests', vars.studioId] }),
   });
 }

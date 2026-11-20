@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "PIQ",
+    "slug": "piq-app",
+    "owner": "gengarileo",
+    "scheme": "piq",
+    "web": { "bundler": "metro", "output": "server" },
+    "plugins": [["expo-router", { "origin": "https://piq.expo.app" }]],
+    "extra": { "eas": { "projectId": "423bb339-4164-4ad7-92a3-e9487b56a96a" } }
+  }
+}

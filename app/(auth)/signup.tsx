@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { showDialog } from '@/lib/dialog';
 import { LEGAL_INFO } from '@/lib/legal';
 import { authRedirect } from '@/lib/authLinks';
+import { PasswordInput } from '@/components/PasswordInput';
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
@@ -101,12 +102,11 @@ export default function SignupScreen() {
         />
 
         <Text className={labelClass}>비밀번호 (6자 이상)</Text>
-        <TextInput
+        <PasswordInput
           value={password}
           onChangeText={setPassword}
           placeholder="비밀번호"
           placeholderTextColor="#A8A29E"
-          secureTextEntry
           textContentType="newPassword"
           className={fieldClass}
         />

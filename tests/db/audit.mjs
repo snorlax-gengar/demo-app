@@ -72,13 +72,15 @@ await tc('TC-S03', '로그인 사용자의 직접 쓰기 권한은 의도한 곳
   return `표 단위 ${t.map((r) => `${r.table_name}(${r.p})`).join(', ')} / 열 단위 수정 ${c.map((r) => `${r.table_name}(${r.table_name === 'pass_products' ? '상품 정보 8개 열' : r.cols})`).join(', ')} — status·studio_id·created_by 등은 수정 불가`;
 });
 
-await tc('TC-S04', '권한 상승 함수(SECURITY DEFINER)는 모두 search_path 를 고정하고, 비로그인은 하나도 실행할 수 없다', '고정 안 된 함수 0개 / anon 실행 가능 0개', async () => {
+// 비로그인 공개가 의도된 함수만 허용 (공개 소개 페이지 읽기·체험 신청 — 패치 016, 각자 입력 검사·속도 제한)
+const ANON_ALLOWED = ['get_public_studio_page', 'submit_trial_request'];
+await tc('TC-S04', '권한 상승 함수(SECURITY DEFINER)는 모두 search_path 를 고정하고, 비로그인은 공개용 2개(소개 페이지 읽기·체험 신청) 말고는 실행할 수 없다', '고정 안 된 함수 0개 / anon 실행 가능 = 허용 목록 2개뿐', async () => {
   const fns = await q(`select p.proname, coalesce(array_to_string(p.proconfig, ','), '') cfg, has_function_privilege('anon', p.oid, 'execute') anon_x
                          from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef`);
   const loose = fns.filter((f) => !f.cfg.includes('search_path=')).map((f) => f.proname);
-  const anonX = fns.filter((f) => f.anon_x).map((f) => f.proname);
-  assert.deepEqual(loose, []); assert.deepEqual(anonX, []);
-  return `SECURITY DEFINER ${fns.length}개 모두 search_path 고정, anon 실행 0개`;
+  const anonX = fns.filter((f) => f.anon_x).map((f) => f.proname).sort();
+  assert.deepEqual(loose, []); assert.deepEqual(anonX, [...ANON_ALLOWED].sort());
+  return `SECURITY DEFINER ${fns.length}개 모두 search_path 고정, anon 실행 = ${anonX.join(', ')} (허용 목록)`;
 });
 
 await tc('TC-S05', '내부 함수(_로 시작)·트리거 함수는 로그인 사용자도 직접 부를 수 없다', '로그인 사용자 실행 가능 0개', async () => {

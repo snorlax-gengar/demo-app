@@ -120,6 +120,24 @@ const openPasses = (sid) => {
   return { members: list.length, remaining: list.reduce((a, x) => a + x.remaining, 0), list };
 };
 let codeSeq = 0;
+// 스튜디오 소개 페이지·체험 신청 (patch 016 의 단순화)
+const studioPages = {
+  S1: { studio_id: 'S1', slug: 'demo-pilates', published: true, headline: '소수 정예 기구 필라테스', intro: '4:1 그룹과 1:1 개인 레슨을 운영해요.\n처음 오시는 분도 편하게 시작할 수 있어요.', category: '필라테스', address: '서울 마포구 양화로 1', contact_phone: '02-123-4567', kakao_url: 'https://open.kakao.com/o/demo', instagram: 'demo.pilates', website_url: null, hours: '평일 07:00–22:00\n주말 09:00–15:00', show_schedule: true, trial_enabled: true, trial_note: '체험 1회 2만원 · 운동복만 챙겨 오세요', photos: ['S1/cover.jpg'], updated_at: '2026-11-20T00:00:00Z' },
+};
+const trials = [
+  { id: 'tr1', studio_id: 'S1', name: '정다은', phone: '01033334444', preferred: '평일 저녁', message: '허리가 안 좋아서 상담 먼저 받고 싶어요', status: 'new', memo: null, handled_at: null, created_at: new Date(now - 2 * H).toISOString() },
+  { id: 'tr2', studio_id: 'S1', name: '문지호', phone: '01055556666', preferred: null, message: null, status: 'contacted', memo: '토요일 10시 가능', handled_at: new Date(now - 20 * H).toISOString(), created_at: new Date(now - 30 * H).toISOString() },
+  { id: 'tr3', studio_id: 'S1', name: '서예린', phone: '01077778888', preferred: '주말', message: null, status: 'done', memo: '등록함', handled_at: new Date(now - 80 * H).toISOString(), created_at: new Date(now - 100 * H).toISOString() },
+];
+const uploads = {};
+const isAdminOf = (me, sid) => ['owner', 'manager'].includes(members.find((m) => m.studio_id === sid && m.user_id === me && m.status === 'active')?.role);
+const publicPage = (slug) => {
+  const pg = Object.values(studioPages).find((x) => x.slug === slug && x.published);
+  if (!pg || studios[pg.studio_id]?.closed_at) return null;
+  const sched = pg.show_schedule ? overview.filter((c) => c.studio_id === pg.studio_id && c.starts_at > new Date().toISOString()).map((c) => ({ title: c.title, starts_at: c.starts_at, ends_at: c.ends_at, location: c.location, capacity: c.max_capacity, left: Math.max(c.max_capacity - c.confirmed_count, 0) })) : null;
+  const { studio_id, published, show_schedule, updated_at, ...rest } = pg;
+  return { ...rest, name: studios[pg.studio_id].name, schedule: sched };
+};
 
 const tokenFor = (email) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: users[email].id, email, role: 'authenticated', exp: Math.floor(now / 1000) + 3600 })}.sig`;
 const meOf = (req) => { try { return JSON.parse(Buffer.from((req.headers.authorization || '').split('.')[1], 'base64url')).sub; } catch { return null; } };
@@ -187,6 +205,21 @@ http.createServer(async (req, res) => {
     return send(200, { ok: true, cancelledBookings: 2 });
   }
   if (p === '/__rpc_log') return send(200, rpcLog);
+  if (p === '/__trials') return send(200, trials);
+  // 테스트 제어: 알림함을 보고 있는 동안 새 알림이 도착한 상황
+  if (p === '/__notify') { const uid = url.searchParams.get('user'); notifications.unshift({ id: 200 + notifications.length, user_id: uid, kind: 'booked', title: '예약이 확정됐어요', body: '방금 도착한 알림', data: { path: '/' }, created_at: new Date().toISOString(), read_at: null, studio_id: 'S1' }); return send(200, {}); }
+  if (p.startsWith('/storage/v1/object/public/studio-photos/')) {
+    const key = decodeURIComponent(p.slice('/storage/v1/object/public/studio-photos/'.length));
+    // 작은 초록색 PNG (1x1) — 업로드된 파일이 있으면 그걸 돌려준다
+    const png = uploads[key] ?? Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+    res.writeHead(200, { 'content-type': uploads[key] ? 'image/jpeg' : 'image/png', 'access-control-allow-origin': '*' }); return res.end(png);
+  }
+  if (p.startsWith('/storage/v1/object/studio-photos/') && req.method === 'POST') {
+    const key = decodeURIComponent(p.slice('/storage/v1/object/studio-photos/'.length));
+    uploads[key] = Buffer.from(body, 'latin1'); rpcLog.push({ fn: 'storage_upload', args: { key, bytes: body.length } });
+    return send(200, { Key: 'studio-photos/' + key });
+  }
+  if (p === '/storage/v1/object/studio-photos' && req.method === 'DELETE') { const j = JSON.parse(body || '{}'); rpcLog.push({ fn: 'storage_remove', args: j }); return send(200, []); }
   // 테스트 제어: 남은 수강권 정리 완료(모두 환불·만료) 상태로
   if (p === '/__settle') { for (const ps of passes) if (ps.studio_id === url.searchParams.get('studio')) { ps.remaining_count = 0; ps.expires_on = dateOnly(-1); } return send(200, {}); }
   // 테스트 제어: 다른 기기에서 원장이 운영을 종료한 상황 (소속 모두 탈퇴 + 종료 알림)
@@ -206,6 +239,35 @@ http.createServer(async (req, res) => {
     const out = (rows) => send(200, single ? rows[0] ?? null : rows);
     const args = body ? JSON.parse(body) : {};
 
+    if (table === 'rpc/get_public_studio_page') { const pp = publicPage(args.p_slug); return pp ? send(200, pp) : (res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' }), res.end('null')); }
+    if (table === 'rpc/submit_trial_request') {
+      rpcLog.push({ fn: 'submit_trial_request', args });
+      const pg = Object.values(studioPages).find((x) => x.slug === args.p_slug && x.published && x.trial_enabled);
+      if (!pg) return send(400, { code: 'P0001', message: '지금은 체험 신청을 받지 않는 페이지예요.' });
+      if (args.p_company) return send(200, { ok: true });
+      if (!args.p_consent) return send(400, { code: 'P0001', message: '개인정보 수집·이용에 동의해 주세요.' });
+      const phone = String(args.p_phone || '').replace(/[^0-9]/g, '');
+      if (!/^0[0-9]{8,11}$/.test(phone)) return send(400, { code: 'P0001', message: '연락받을 전화번호를 정확히 적어 주세요.' });
+      if (trials.some((t) => t.studio_id === pg.studio_id && t.phone === phone && Date.now() - new Date(t.created_at).getTime() < 24 * H)) return send(400, { code: 'P0001', message: '이미 신청했어요. 스튜디오에서 곧 연락드릴게요.' });
+      trials.unshift({ id: 'tr' + (trials.length + 10), studio_id: pg.studio_id, name: String(args.p_name).trim(), phone, preferred: args.p_preferred || null, message: args.p_message || null, status: 'new', memo: null, handled_at: null, created_at: new Date().toISOString() });
+      return send(200, { ok: true });
+    }
+    if (table === 'rpc/save_studio_page') {
+      rpcLog.push({ fn: 'save_studio_page', args: { me, ...args } });
+      if (!isAdminOf(me, args.p_studio_id)) return send(400, { code: '42501', message: '원장·실장만 소개 페이지를 바꿀 수 있어요.' });
+      const pg = args.p_page || {};
+      if (!/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(pg.slug || '') || /--/.test(pg.slug)) return send(400, { code: '23514', message: '주소 이름은 영문 소문자·숫자·하이픈(-)으로 3~30자로 지어 주세요.' });
+      if (Object.values(studioPages).some((x) => x.slug === pg.slug && x.studio_id !== args.p_studio_id)) return send(400, { code: '23505', message: '이미 다른 스튜디오가 쓰는 주소예요. 다른 이름을 골라 주세요.' });
+      studioPages[args.p_studio_id] = { ...(studioPages[args.p_studio_id] ?? {}), ...pg, studio_id: args.p_studio_id, updated_at: new Date().toISOString() };
+      return send(200, studioPages[args.p_studio_id]);
+    }
+    if (table === 'rpc/update_trial_request') {
+      rpcLog.push({ fn: 'update_trial_request', args: { me, ...args } });
+      const t = trials.find((x) => x.id === args.p_id);
+      if (!t || !isAdminOf(me, t.studio_id)) return send(400, { code: '42501', message: '권한이 없어요.' });
+      t.status = args.p_status; if (args.p_memo !== null && args.p_memo !== undefined) t.memo = args.p_memo; t.handled_at = new Date().toISOString();
+      return send(200, t);
+    }
     if (table === 'rpc/create_studio') {
       const id = 'NS' + createdStudios.length;
       const s = { id, name: args.p_name, invite_code: 'NEW' + String(++codeSeq).padStart(3, '0'), created_by: me, created_at: new Date().toISOString() };
@@ -267,6 +329,8 @@ http.createServer(async (req, res) => {
     if (table === 'rpc/book_class') return send(200, { id: 'nb1', status: 'confirmed', member_id: args.p_member_id, class_id: args.p_class_id });
     if (table.startsWith('rpc/')) return send(200, { id: args.p_booking_id ?? 'nb', status: args.p_status ?? 'confirmed', pass_refunded: true });
 
+    if (table === 'studio_pages') return out(isAdminOf(me, eq(q.studio_id)) && studioPages[eq(q.studio_id)] ? [studioPages[eq(q.studio_id)]] : []);
+    if (table === 'trial_requests') return out(isAdminOf(me, eq(q.studio_id)) ? trials.filter((t) => t.studio_id === eq(q.studio_id)) : []);
     if (table === 'users') {
       if (req.method === 'PATCH') {
         const u = Object.values(users).find((x) => x.id === eq(q.id));

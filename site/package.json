@@ -1,0 +1,10 @@
+{
+  "name": "piq-site",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "build": "node ../scripts/build-site.mjs",
+    "serve": "npx expo serve --port 8090",
+    "deploy": "node ../scripts/build-site.mjs && npx eas-cli@latest deploy --prod --export-dir dist"
+  }
+}

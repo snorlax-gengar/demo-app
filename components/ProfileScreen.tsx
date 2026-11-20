@@ -9,6 +9,8 @@ import {
   useNotifications,
   useRegenerateInviteCode,
   useRevenue,
+  useStudioPage,
+  useTrialRequests,
   useUpdateProfile,
   useUpdateStudioName,
 } from '@/hooks/queries';
@@ -41,6 +43,9 @@ export function ProfileScreen() {
   const unread = (useNotifications().data ?? []).filter((n) => !n.read_at).length;
   const pushStatus = usePushStore((s) => s.status);
   const revenue = useRevenue(studioId, thisMonth, isOwner);
+  const studioPage = useStudioPage(studioId, isAdmin);
+  const trials = useTrialRequests(studioId, isAdmin);
+  const newTrials = (trials.data ?? []).filter((t) => t.status === 'new').length;
   const regenerate = useRegenerateInviteCode();
   const updateProfile = useUpdateProfile();
   const updateStudioName = useUpdateStudioName();
@@ -253,6 +258,47 @@ export function ProfileScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#A8A29E" />
           </Pressable>
+        ) : null}
+
+        {/* 소개 페이지 · 체험 신청 (원장·관리자) */}
+        {isAdmin ? (
+          <View className="mt-4 overflow-hidden rounded-3xl bg-surface">
+            <Pressable
+              onPress={() => router.push('/(admin)/studio-page')}
+              accessibilityRole="button"
+              accessibilityLabel="스튜디오 소개 페이지"
+              className="flex-row items-center p-5 active:opacity-70">
+              <View className="h-11 w-11 items-center justify-center rounded-full bg-brand-50">
+                <Ionicons name="storefront-outline" size={20} color="#0B7A4D" />
+              </View>
+              <View className="ml-4 flex-1">
+                <Text className="text-base font-bold text-ink">소개 페이지</Text>
+                <Text className="mt-0.5 text-sm text-stone-500">
+                  {studioPage.data?.published ? '공개 중 · 링크를 공유해 홍보하세요' : '사진·소개·체험 신청을 받는 공개 링크 만들기'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#A8A29E" />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/(admin)/trials')}
+              accessibilityRole="button"
+              accessibilityLabel="체험 신청"
+              className="flex-row items-center border-t border-stone-200/70 p-5 active:opacity-70">
+              <View className="h-11 w-11 items-center justify-center rounded-full bg-brand-50">
+                <Ionicons name="sparkles-outline" size={20} color="#0B7A4D" />
+              </View>
+              <View className="ml-4 flex-1">
+                <Text className="text-base font-bold text-ink">체험 신청</Text>
+                <Text className="mt-0.5 text-sm text-stone-500">소개 페이지로 들어온 신청 확인·연락</Text>
+              </View>
+              {newTrials > 0 ? (
+                <View className="mr-2 min-w-[22px] items-center rounded-full bg-rose-500 px-1.5 py-0.5">
+                  <Text className="text-xs font-bold text-white">{newTrials}</Text>
+                </View>
+              ) : null}
+              <Ionicons name="chevron-forward" size={20} color="#A8A29E" />
+            </Pressable>
+          </View>
         ) : null}
 
         {/* 수강권 상품 (원장·관리자) */}

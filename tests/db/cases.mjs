@@ -695,6 +695,93 @@ await tc('TC-D28', '스튜디오 격리', '다른 스튜디오 원장은 이 스
   return `예약 ${r.bookings} · 수강권 ${r.passes} · 기록 ${r.logs} · 회원 ${r.members}건`;
 });
 
+// 9) 스튜디오 소개 페이지 + 체험 신청 (패치 016)
+const anon = async (sql, p) => { await as(null); await db.exec(`set role anon`); try { return await q(sql, p); } finally { await db.exec(`reset role`); } };
+const pageJson = (o) => JSON.stringify({ slug: 'pilates-test', published: false, headline: '동네 소규모 필라테스', intro: '소개글\n둘째 줄', category: '필라테스',
+  address: '서울 마포구 테스트로 1', contact_phone: '02-123-4567', kakao_url: 'https://open.kakao.com/o/abc', instagram: '@pilates.test',
+  website_url: 'https://example.com', hours: '평일 07:00~22:00', show_schedule: true, trial_enabled: true, trial_note: '체험 1회 2만원', photos: [], ...o });
+
+await tc('TC-D58', '소개 페이지', '원장·실장만 소개 페이지를 저장할 수 있고, 주소 이름·링크·사진 경로를 검사한다. 공개하기 전에는 아무도 볼 수 없고, 공개 후에는 로그인 없이 스튜디오 정보와 14일 시간표(남은 자리)만 보인다 — 회원·강사 이름, 초대 코드는 나오지 않는다', '강사·회원 저장 거절 / 주소 이름 "AB", "a--b" 거절 / 다른 스튜디오와 같은 주소 거절 / 카카오 링크·사진 경로 검사 / 비공개 → null / 공개 → 이름·시간표·남은 자리, 이름·초대 코드 없음 / anon 은 표 직접 조회 불가', async () => {
+  await rejects(rpc(P.t1, `select save_studio_page($1,$2)`, [A.id, pageJson({})]), /원장·실장만/);
+  await rejects(rpc(P.m[0], `select save_studio_page($1,$2)`, [A.id, pageJson({})]), /원장·실장만/);
+  await rejects(rpc(P.owner, `select save_studio_page($1,$2)`, [A.id, pageJson({ slug: 'AB' })]), /3~30자/);
+  await rejects(rpc(P.owner, `select save_studio_page($1,$2)`, [A.id, pageJson({ slug: 'a--b' })]), /3~30자/);
+  await rejects(rpc(P.owner, `select save_studio_page($1,$2)`, [A.id, pageJson({ kakao_url: 'https://evil.example/x' })]), /카카오톡 링크는/);
+  await rejects(rpc(P.owner, `select save_studio_page($1,$2)`, [A.id, pageJson({ photos: [`${B.id}/x.jpg`] })]), /사진 경로가 올바르지 않습니다/);
+  const saved = (await rpc(P.owner, `select * from save_studio_page($1,$2)`, [A.id, pageJson({ slug: 'Pilates-Test', photos: [`${A.id}/a.jpg`] })]))[0];
+  await rejects(rpc(P.ownerB, `select save_studio_page($1,$2)`, [B.id, pageJson({ slug: 'pilates-test' })]), /이미 다른 스튜디오가 쓰는 주소/);
+  const mgr = (await rpc(P.manager, `select * from save_studio_page($1,$2)`, [A.id, pageJson({ headline: '실장이 고친 소개', photos: [`${A.id}/a.jpg`] })]))[0];
+  const hidden = (await anon(`select get_public_studio_page('pilates-test') r`))[0].r;
+  await rpc(P.owner, `select save_studio_page($1,$2)`, [A.id, pageJson({ published: true, photos: [`${A.id}/a.jpg`] })]);
+  const cls = (await q(`insert into classes(studio_id,title,instructor_id,starts_at,ends_at,max_capacity) values ($1,'공개 시간표 수업',$2,now()+interval '9 days 3 hours 11 minutes',now()+interval '9 days 3 hours 41 minutes',3) returning id`, [A.id, P.owner]))[0].id;
+  await q(`insert into passes(studio_id,member_id,class_type,name,total_count,remaining_count,starts_on,expires_on) values ($1,$2,'group','공개테스트권',5,5,current_date,current_date+30)`, [A.id, P.m[5]]);
+  await book(P.m[5], cls);
+  await q(`insert into classes(studio_id,title,instructor_id,starts_at,ends_at,max_capacity) values ($1,'3주 뒤 수업',$2,now()+interval '23 days 3 hours 11 minutes',now()+interval '23 days 3 hours 41 minutes',3)`, [A.id, P.owner]);
+  const pub = (await anon(`select get_public_studio_page('PILATES-TEST') r`))[0].r;
+  const txt = JSON.stringify(pub);
+  const sched = pub.schedule.find((c) => c.title === '공개 시간표 수업');
+  await rejects(anon(`select * from studio_pages`), /permission denied/);
+  await rejects(anon(`select * from trial_requests`), /permission denied/);
+  assert.equal(saved.slug, 'pilates-test'); assert.equal(saved.instagram, 'pilates.test'); assert.equal(mgr.headline, '실장이 고친 소개');
+  assert.equal(hidden, null);
+  assert.equal(pub.name, '테스트 필라테스'); assert.deepEqual(pub.photos, [`${A.id}/a.jpg`]);
+  assert.ok(sched && sched.left === 2 && sched.capacity === 3, JSON.stringify(pub.schedule));
+  assert.ok(!pub.schedule.some((c) => c.title === '3주 뒤 수업'));
+  assert.ok(!txt.includes(A.invite_code) && !txt.includes('회원6') && !txt.includes(P.m[5]) && !txt.includes(P.t1) && !/instructor|member|invite/.test(txt), txt.slice(0, 300));
+  return `잘못된 저장 6가지 거절 · 주소 "Pilates-Test"→"${saved.slug}" · 실장 수정 가능 · 비공개 null → 공개 후 이름·사진·시간표(남은 자리 ${sched.left}/${sched.capacity}, 14일 밖 제외) · 초대 코드·강사·회원 정보 없음 · anon 표 직접 조회 거절`;
+});
+
+await tc('TC-D59', '체험 신청', '로그인 없이 체험 수업을 신청하면 원장·실장에게만 알림이 가고, 동의·전화번호·중복(24시간)·봇 칸·신청 받지 않음·스튜디오 시간당 20건 제한을 지킨다', '동의 없음·번호 오류 거절 / 봇 칸 → 성공처럼 답하지만 저장 0 / 정상 신청 → 저장(번호 숫자만)·알림 원장·실장 2건(path /trials), 강사·회원 0 / 같은 번호 재신청 거절 / 신청 끄면 거절 / 20건 넘으면 거절', async () => {
+  const sub = (name, phone, consent = true, company = null) => anon(`select submit_trial_request('pilates-test',$1,$2,'평일 저녁','처음이에요',$3,$4) r`, [name, phone, consent, company]);
+  await rejects(sub('김체험', '010-1111-2222', false), /동의해 주세요/);
+  await rejects(sub('김체험', '12345'), /전화번호를 정확히/);
+  const bot = (await sub('봇', '010-9999-9999', true, 'spam inc'))[0].r;
+  const ok = (await sub('김체험', '010-1111-2222'))[0].r;
+  const row = (await q(`select name, phone, status, consent_at is not null c from trial_requests where studio_id=$1`, [A.id]));
+  const notes = await q(`select n.user_id, n.kind, n.title, n.data->>'path' path from notifications n where n.kind='trial_request' and n.studio_id=$1`, [A.id]);
+  await rejects(sub('김체험', '01011112222'), /이미 신청하셨어요/);
+  for (let i = 0; i < 19; i++) await sub(`대량${i}`, `0102000${String(i).padStart(4, '0')}`);
+  await rejects(sub('넘침', '010-3000-0000'), /신청이 많아요/);
+  await rpc(P.owner, `select save_studio_page($1,$2)`, [A.id, pageJson({ published: true, trial_enabled: false, photos: [`${A.id}/a.jpg`] })]);
+  await rejects(sub('끔', '010-4000-0000'), /체험 신청을 받지 않아요/);
+  await rpc(P.owner, `select save_studio_page($1,$2)`, [A.id, pageJson({ published: true, photos: [`${A.id}/a.jpg`] })]);
+  assert.deepEqual(bot, { ok: true }); assert.deepEqual(ok, { ok: true });
+  assert.equal(row.length, 1); assert.deepEqual({ ...row[0] }, { name: '김체험', phone: '01011112222', status: 'new', c: true });
+  assert.deepEqual(notes.map((n) => n.user_id).sort(), [P.owner, P.manager].sort());
+  assert.ok(notes.every((n) => n.path === '/trials' && n.title === '체험 신청 · 김체험'));
+  return `동의 없음·번호 오류 거절 · 봇 칸 → 저장 0 · 정상 신청 1건(번호 ${row[0].phone}) → 알림 원장·실장 ${notes.length}건(/trials) · 24시간 중복 거절 · 시간당 20건 초과 거절 · 신청 끄면 거절`;
+});
+
+await tc('TC-D60', '체험 신청', '체험 신청 목록은 원장·실장만 보고 처리한다 (상태·메모, 처리 시각 기록). 강사·회원·다른 스튜디오 원장은 볼 수도 고칠 수도 없다', '원장 20건 조회 · 강사/회원/B원장 0건 · 강사 처리 거절 · 실장이 "연락함"+메모 → handled_at 기록 · "새 신청"으로 되돌리면 handled_at 비움', async () => {
+  const see = async (u) => (await rpc(u, `select count(*)::int c from trial_requests where studio_id=$1`, [A.id]))[0].c;
+  const counts = { owner: await see(P.owner), t1: await see(P.t1), m: await see(P.m[0]), ownerB: await see(P.ownerB) };
+  const id = (await q(`select id from trial_requests where studio_id=$1 and name='김체험'`, [A.id]))[0].id;
+  await rejects(rpc(P.t1, `select update_trial_request($1,'contacted')`, [id]), /원장·실장만/);
+  await rejects(rpc(P.ownerB, `select update_trial_request($1,'contacted')`, [id]), /원장·실장만/);
+  await rejects(rpc(P.manager, `select update_trial_request($1,'weird')`, [id]), /알 수 없는 상태/);
+  const c = (await rpc(P.manager, `select * from update_trial_request($1,'contacted','토요일 10시 체험 안내함')`, [id]))[0];
+  const back = (await rpc(P.owner, `select * from update_trial_request($1,'new')`, [id]))[0];
+  assert.deepEqual(counts, { owner: 20, t1: 0, m: 0, ownerB: 0 });
+  assert.equal(c.status, 'contacted'); assert.equal(c.memo, '토요일 10시 체험 안내함'); assert.ok(c.handled_at);
+  assert.equal(back.handled_at, null); assert.equal(back.memo, '토요일 10시 체험 안내함');
+  return `조회 원장 ${counts.owner} · 강사 ${counts.t1} · 회원 ${counts.m} · B원장 ${counts.ownerB} · 강사/B원장/이상한 상태 거절 · 실장 "연락함"+메모 → 처리 시각 기록 · 되돌리면 비움`;
+});
+
+await tc('TC-D61', '체험 신청', '스튜디오 운영을 종료하면 소개 페이지는 비공개, 체험 신청(비회원 개인정보)은 즉시 삭제된다. 평소에도 180일 지난 신청은 정리 작업이 지운다', '오래된 신청(181일) 정리 1건 · B 스튜디오 공개 페이지 → 운영 종료 → 비공개·공개 조회 null·신청 0건', async () => {
+  const S = (await rpc(P.ownerB, `select * from create_studio('정리될 스튜디오')`))[0];
+  await rpc(P.ownerB, `select save_studio_page($1,$2)`, [S.id, pageJson({ slug: 'closing-soon', published: true })]);
+  await anon(`select submit_trial_request('closing-soon','정리대상','010-5555-6666','','',true,null)`);
+  await q(`insert into trial_requests(studio_id,name,phone,consent_at,created_at) values ($1,'오래된 신청','01077778888',now()-interval '181 days',now()-interval '181 days')`, [A.id]);
+  const purged = (await q(`select purge_old_trial_requests() n`))[0].n;
+  const before = (await q(`select count(*)::int c from trial_requests where studio_id=$1`, [S.id]))[0].c;
+  await rpc(P.ownerB, `select close_studio($1,'정리될 스튜디오')`, [S.id]);
+  const after = (await q(`select count(*)::int c from trial_requests where studio_id=$1`, [S.id]))[0].c;
+  const pubFlag = (await q(`select published from studio_pages where studio_id=$1`, [S.id]))[0].published;
+  const pub = (await anon(`select get_public_studio_page('closing-soon') r`))[0].r;
+  assert.equal(purged, 1); assert.equal(before, 1); assert.equal(after, 0); assert.equal(pubFlag, false); assert.equal(pub, null);
+  return `180일 지난 신청 ${purged}건 정리 · 운영 종료 전 신청 ${before}건 → 종료 후 ${after}건, 페이지 비공개·공개 조회 null`;
+});
+
 const passed = results.filter((r) => r.pass).length;
 console.log(`\n${passed}/${results.length} passed`);
 fs.writeFileSync(outPath, JSON.stringify({ schema: schemaPath, ranAt: new Date().toISOString(), results }, null, 2));

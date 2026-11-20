@@ -65,7 +65,7 @@ npx eas-cli env:push development --path .env
 
 ## 6. 스토어 제출 준비
 - [ ] `lib/legal.ts` 맨 위 `LEGAL_INFO` 의 [자리표시] 채우기 → 앱에 바로 반영
-- [ ] `node --experimental-strip-types scripts/build-legal-site.mjs` 로 `public-site/` 다시 만들고 인터넷에 올리기 (GitHub Pages, Netlify 드래그 앤 드롭 등)
+- [ ] `cd site && npm run deploy` 로 https://piq.expo.app 에 다시 배포 (처리방침·약관·계정 삭제·스튜디오 소개 페이지 `/s/<주소>`)
   - 개인정보 처리방침 URL → App Store Connect · Play Console 둘 다 필수
   - 계정 삭제 요청 URL (`delete-account.html`) → Play Console 데이터 보안 양식에 필수 (앱 안 탈퇴와 별도로 웹 링크도 요구)
 - [ ] 스토어 표시 이름: "PIQ"는 App Store 에 같은 이름의 앱이 있어 "PIQ - 수업 예약" 처럼 설명을 붙이기

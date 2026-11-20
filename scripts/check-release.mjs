@@ -83,8 +83,8 @@ check('TC-R08', 'Edge Function 2개와 DB 패치가 모두 저장소에 있다',
   return [ok ? 'ok' : 'fail', `함수 ${fns.join('·')}, 패치 ${patches.length}개(005~013)`];
 });
 
-check('TC-R09', '스토어 제출용 공개 웹페이지(처리방침·계정 삭제 요청)가 준비돼 있다', 'public-site/privacy.html·delete-account.html·terms.html (호스팅 후 URL 을 스토어에 입력)', () => {
-  const dir = path.join(root, 'public-site');
+check('TC-R09', '스토어 제출용 공개 웹페이지(처리방침·계정 삭제 요청)가 준비돼 있다', 'site/public/privacy.html·delete-account.html·terms.html (호스팅 후 URL 을 스토어에 입력)', () => {
+  const dir = path.join(root, 'site', 'public');
   const need = ['privacy.html', 'terms.html', 'delete-account.html'];
   const have = fs.existsSync(dir) ? fs.readdirSync(dir) : [];
   const missing = need.filter((f) => !have.includes(f));
