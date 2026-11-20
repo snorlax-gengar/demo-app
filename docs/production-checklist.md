@@ -7,8 +7,8 @@
 - [ ] SQL Editor 에서 `supabase/patches/012_withdraw_account.sql` 실행 (이미 했으면 다시 해도 안전)
 - [x] SQL Editor 에서 `supabase/patches/013_harden_class_updates.sql` 실행 (`classes` 열 단위 권한 제한 + 시작/폐강 수업 수정 가드, 2026-11-19 완료)
 - [x] SQL Editor 에서 `supabase/patches/014_close_studio.sql` 실행 (스튜디오 운영 종료 + 혼자인 원장 탈퇴 시 자동 종료, 2026-11-20 완료)
-- [ ] SQL Editor 에서 `supabase/patches/015_close_requests.sql` 실행 (남은 수강권이 있으면 운영자 승인 후 종료)
-- [ ] `supabase/admin/close_requests.sql` 의 [0] 으로 운영자 계정 등록 (운영 종료 요청 알림을 받을 앱 계정 이메일). 요청 확인·승인·반려도 이 파일로
+- [x] SQL Editor 에서 `supabase/patches/015_close_requests.sql` 실행 (남은 수강권이 있으면 운영자 승인 후 종료, 2026-11-20 완료)
+- [x] `supabase/admin/close_requests.sql` 의 [0] 으로 운영자 계정 등록 (2026-11-20, 앱 계정 1개) (운영 종료 요청 알림을 받을 앱 계정 이메일). 요청 확인·승인·반려도 이 파일로
 - [x] `npx supabase@latest functions deploy delete-account --project-ref <ref> --use-api --no-verify-jwt` (2026-11-18 배포 확인, Verify JWT 끔)
 - [ ] Edge Functions → `send-push` Secrets 에 `PUSH_SECRET` 설정 및 DB `app_settings.send_push_secret` 동일 값 입력 (미설정 시 외부 무제한 호출 가능)
 - [ ] Database → Cron Jobs 에 `class-reminders`(매일 20:00) · `send-push-retry`(5분) 두 개가 있는지
