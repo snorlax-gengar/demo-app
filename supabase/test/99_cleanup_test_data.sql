@@ -4,10 +4,14 @@
 -- 지우는 것
 --   · 제목이 '[테스트]' 로 시작하는 수업 (그 수업의 예약 포함)
 --   · 이름이 '[테스트]' 로 시작하는 수강권 (변동 내역·결제 기록 포함)
---   · test.*@example.com 테스트 계정 7개 (소속·프로필 포함)
+--   · test.*@example.com 테스트 계정 (01 의 7개 + 02 운영 종료 테스트 5개, 소속·프로필 포함)
+--   · 이름이 '[테스트]' 로 시작하는 스튜디오 (02 운영 종료 테스트용, 수업·수강권·알림 함께 삭제)
 -- 지우지 않는 것
 --   · 본인 계정들, 스튜디오, '[테스트]' 표시가 없는 수업·수강권
 -- =============================================================================
+
+-- 0) [테스트] 스튜디오 (02_close_studio_test.sql 이 만든 테스트 전용 스튜디오. 소속·수업·수강권·알림 연쇄 삭제)
+delete from public.studios where name like '[테스트]%';
 
 -- 1) [테스트] 수업 (예약은 함께 삭제됨)
 delete from public.classes where title like '[테스트]%';
@@ -22,6 +26,7 @@ delete from auth.users where email like 'test.%@example.com';
 
 -- 확인: 모두 0 이어야 합니다
 select
+  (select count(*) from public.studios where name  like '[테스트]%')                 as test_studios,
   (select count(*) from public.classes where title like '[테스트]%')                 as test_classes,
   (select count(*) from public.passes  where name  like '[테스트]%')                 as test_passes,
   (select count(*) from auth.users     where email like 'test.%@example.com')        as test_accounts;
