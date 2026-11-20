@@ -835,44 +835,99 @@ with sync_playwright() as p:
         assert n == 0, n
         return '회원 → "스튜디오 운영 종료" 0개, "회원 탈퇴"만 표시'
 
-    @case('TC-U40', '운영 종료', '원장이 운영 종료 화면을 열면 영향(폐강 수업·취소 예약·알림 대상)을 숫자로 보여주고, 스튜디오 이름이 다르면 종료 버튼이 눌리지 않는다', '내 정보 → 스튜디오 운영 종료 → 폐강·예약·알림 숫자 표시 → 이름 "데모"만 입력 시 버튼 비활성, 서버 요청 0번')
+    @case('TC-U40', '운영 종료', '회원에게 남은 수강권이 있으면 운영 종료 화면에서 바로 종료할 수 없고, 남은 수강권(회원 수·횟수·명단)과 운영자 승인 절차를 안내한다', '내 정보 → 스튜디오 운영 종료 → "남은 수강권이 있어 바로 종료할 수 없어요"·회원 4명 · 39회·명단 / 이름 확인칸 없음 / 사유 5자 미만이면 요청 버튼 비활성')
     def _():
         fresh_login('owner@x.com', '전체 강사 보기')
         pg.get_by_text('내 정보', exact=True).last.click()
         pg.get_by_text('스튜디오 운영 종료').last.scroll_into_view_if_needed()
         pg.get_by_text('스튜디오 운영 종료').last.click()
-        pg.get_by_text('폐강될 수업').wait_for(timeout=15000)
+        pg.get_by_text('남은 수강권이 있어 바로 종료할 수 없어요').wait_for(timeout=15000)
+        summary = pg.get_by_label('남은 수강권 요약').inner_text()
         body = pg.inner_text('body')
+        name_box = pg.get_by_label('스튜디오 이름 확인').count()
+        pg.get_by_label('운영 종료 요청 사유').fill('환불')
+        dis = pg.get_by_label('운영 종료 요청 보내기').get_attribute('aria-disabled')
+        pg.wait_for_timeout(300)
+        shot('TC-U40', full=True)
+        assert '회원 4명 · 남은 횟수 39회' in summary, summary
+        assert '김하늘' in body and '20회' in body, body[:500]
+        assert name_box == 0 and dis == 'true', (name_box, dis)
+        return f'"{summary}" + 명단(김하늘 20회 등) · 이름 확인칸 0개 · 사유 2자 → 요청 버튼 비활성'
+
+    @case('TC-U41', '운영 종료', '사유를 적어 운영 종료 요청을 보내면 "검토 중" 상태로 바뀌고, 원장은 요청을 취소할 수 있다', '사유 입력 → 요청 보내기 → 확인창 → "요청을 보냈어요" → "운영 종료 요청을 검토 중이에요"(사유 표시) → 요청 취소 → 다시 요청 화면 / 서버: 요청 1번(사유)·취소 1번')
+    def _():
+        reason = '남은 회원 4명 모두 남은 횟수만큼 환불을 마쳤습니다.'
+        pg.get_by_label('운영 종료 요청 사유').fill(reason)
+        pg.get_by_label('운영 종료 요청 보내기').click()
+        pg.get_by_text('운영 종료를 요청할까요?').wait_for(timeout=5000)
+        pg.get_by_role('button', name='요청 보내기', exact=True).click()
+        pg.get_by_text('요청을 보냈어요').wait_for(timeout=10000)
+        pg.wait_for_timeout(400)
+        shot('TC-U41a')
+        pg.get_by_role('button', name='확인').click()
+        pg.get_by_text('운영 종료 요청을 검토 중이에요').wait_for(timeout=10000)
+        shown = pg.get_by_text(reason, exact=False).count()
+        pg.wait_for_timeout(300)
+        shot('TC-U41b', full=True)
+        pg.get_by_label('운영 종료 요청 취소').click()
+        pg.get_by_role('button', name='요청 취소', exact=True).click()
+        pg.get_by_label('운영 종료 요청 사유').wait_for(timeout=10000)
+        pg.wait_for_timeout(300)
+        shot('TC-U41')
+        log = json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read())
+        rq = [x for x in log if x['fn'] == 'request_studio_close']
+        cc = [x for x in log if x['fn'] == 'cancel_studio_close_request']
+        cl = [x for x in log if x['fn'] == 'close_studio']
+        assert len(rq) == 1 and rq[0]['args']['p_reason'] == reason, rq
+        assert len(cc) == 1 and not cl and shown >= 1, (cc, cl, shown)
+        return '요청 1번(사유 그대로) → 검토 중 카드에 사유 표시 → 요청 취소 1번 → 다시 요청 화면 · 바로 종료 요청 0번'
+
+    @case('TC-U42', '운영 종료', '남은 수강권이 없으면(모두 정리됨) 스튜디오 이름을 정확히 입력하고 한 번 더 확인해 바로 종료하고, 남은 다른 스튜디오로 이동한다', '정리 완료 후 다시 열기 → 안내 카드 없음 → 이름 "데모"만 입력 시 비활성 → 정확히 입력 → "정말 종료할까요?" → 운영 종료 → "운영을 종료했습니다" → 확인 → 이선생 수학교실 화면')
+    def _():
+        urllib.request.urlopen(BASE + '/__settle?studio=S1').read()
+        pg.goto(BASE + '/close-studio')
+        pg.get_by_label('스튜디오 이름 확인').wait_for(timeout=20000)
+        warn = pg.get_by_text('남은 수강권이 있어 바로 종료할 수 없어요').count()
         pg.get_by_label('스튜디오 이름 확인').fill('데모')
         dis = pg.get_by_label('스튜디오 운영 종료하기').get_attribute('aria-disabled')
-        pg.get_by_label('스튜디오 운영 종료하기').click(force=True)
-        pg.wait_for_timeout(500)
-        shot('TC-U40', full=True)
-        calls = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'close_studio']
-        nums = re.findall(r'(\d+)\n(폐강될 수업|취소될 예약·대기|알림 받을 사람)', body)
-        assert len(nums) == 3, body[:400]
-        assert dis == 'true' and not calls, (dis, calls)
-        return '영향 ' + ', '.join(f'{k} {v}' for v, k in nums) + ' → 이름 불일치 시 버튼 비활성, 서버 요청 0번'
-
-    @case('TC-U41', '운영 종료', '스튜디오 이름을 정확히 입력하고 한 번 더 확인하면 운영이 종료되고, 남은 다른 스튜디오로 이동한다', '이름 입력 → 운영 종료하기 → "정말 종료할까요?" → 운영 종료 → "운영을 종료했습니다"(폐강·알림 수) → 확인 → 다른 스튜디오(이선생 수학교실) 화면')
-    def _():
         pg.get_by_label('스튜디오 이름 확인').fill('데모 필라테스')
+        pg.wait_for_timeout(300)
+        shot('TC-U42a', full=True)
         pg.get_by_label('스튜디오 운영 종료하기').click()
         pg.get_by_text('정말 종료할까요?').wait_for(timeout=5000)
         pg.wait_for_timeout(600)
-        shot('TC-U41a')
+        shot('TC-U42b')
         pg.get_by_role('button', name='운영 종료', exact=True).click()
         pg.get_by_text('운영을 종료했습니다').wait_for(timeout=10000)
         msg = pg.get_by_text('명에게 종료 알림', exact=False).inner_text()
         pg.wait_for_timeout(400)
-        shot('TC-U41b')
+        shot('TC-U42c')
         pg.get_by_role('button', name='확인').click()
         pg.get_by_text('이선생 수학교실', exact=False).first.wait_for(timeout=20000)
         pg.wait_for_timeout(600)
-        shot('TC-U41')
+        shot('TC-U42')
         calls = [x for x in json.loads(urllib.request.urlopen(BASE + '/__rpc_log').read()) if x['fn'] == 'close_studio']
+        assert warn == 0 and dis == 'true', (warn, dis)
         assert len(calls) == 1 and calls[0]['args']['p_confirm_name'] == '데모 필라테스', calls
-        return f'종료 요청 1번 → "{msg.splitlines()[0]}" → 남은 스튜디오 "이선생 수학교실"로 이동'
+        return f'안내 카드 0개, 이름 불일치 시 비활성 → 종료 요청 1번 → "{msg.splitlines()[0]}" → 남은 스튜디오 "이선생 수학교실"로 이동'
+
+    @case('TC-U43', '운영 종료', '앱을 켜 둔 채 다른 기기에서 스튜디오가 운영 종료돼도, 앱이 다시 앞으로 오면 소속을 새로 불러와 스튜디오 만들기/참여 화면으로 바뀐다 (F-09)', '이선생 수학교실 화면 → (원장이 운영 종료 + 종료 알림) → 앱 전환 후 복귀 → "환영합니다" 만들기/참여 화면, 소속 다시 불러오기 요청 발생')
+    def _():
+        before = pg.get_by_text('이선생 수학교실', exact=False).count()
+        urllib.request.urlopen(BASE + '/__close_elsewhere?studio=S2&user=a1').read()
+        pg.wait_for_timeout(500)
+        stale = pg.get_by_text('이선생 수학교실', exact=False).count()
+        pg.evaluate("""() => {
+          const set = (v) => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => v });
+                               Object.defineProperty(document, 'hidden', { configurable: true, get: () => v === 'hidden' });
+                               document.dispatchEvent(new Event('visibilitychange')); };
+          set('hidden'); set('visible');
+        }""")
+        pg.get_by_text('환영합니다', exact=False).first.wait_for(timeout=15000)
+        pg.wait_for_timeout(500)
+        shot('TC-U43')
+        assert before >= 1 and stale >= 1, (before, stale)
+        return f'종료 직후에도 화면에는 예전 스튜디오({stale}곳 표시) → 앱 복귀 시 소속 새로 불러옴 → 스튜디오 만들기/참여 화면'
 
     @case('TC-U10', '공통', '테스트 내내 브라우저 기본 팝업(confirm/alert)과 화면 오류가 없다', '브라우저 기본 팝업 0건, 페이지 오류 0건')
     def _():

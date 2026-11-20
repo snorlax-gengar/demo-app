@@ -9,6 +9,7 @@ import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DialogHost } from '@/components/DialogHost';
+import { MembershipSync } from '@/components/MembershipSync';
 import { isStaffRole } from '@/lib/labels';
 import { pathFromNotification, registerForPush } from '@/lib/push';
 import { queryClient } from '@/lib/queryClient';
@@ -116,6 +117,7 @@ export default function RootLayout() {
             <Stack.Screen name="auth-callback" />
           </Stack>
         )}
+        {session && accountLoaded ? <MembershipSync /> : null}
         <DialogHost />
       </SafeAreaProvider>
     </QueryClientProvider>

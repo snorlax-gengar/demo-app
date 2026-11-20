@@ -819,11 +819,23 @@ export function useMarkNotificationsRead() {
   });
 }
 
-// ---------- 스튜디오 운영 종료 (원장, 패치 014) ----------
+// ---------- 스튜디오 운영 종료 (원장, 패치 014·015) ----------
+export interface CloseRequest {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  reason: string;
+  created_at: string;
+  decided_at: string | null;
+  decision_note: string | null;
+}
+
 export interface CloseStudioPreview {
   classes: number;
   bookings: number;
   members: number;
+  /** 남은 수강권(만료 전 남은 횟수 + 예정 예약 + 최근 30일 안에 줄인 횟수). 있으면 바로 종료 불가 → 운영자 승인 요청 */
+  open?: { members: number; remaining: number; list: { name: string; remaining: number }[] };
+  request?: CloseRequest | null;
 }
 
 export function useCloseStudioPreview(studioId: string, enabled: boolean) {
@@ -851,5 +863,30 @@ export function useCloseStudio() {
       // 종료 후엔 더 이상 원장이 아니므로 미리보기를 다시 부르지 않는다(권한 오류 방지)
       void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'close-studio-preview' });
     },
+  });
+}
+
+/** 남은 수강권이 있을 때: 운영자에게 운영 종료 요청 (사유 5자 이상) */
+export function useRequestStudioClose() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { studioId: string; reason: string }): Promise<CloseRequest> => {
+      const { data, error } = await supabase.rpc('request_studio_close', { p_studio_id: vars.studioId, p_reason: vars.reason });
+      if (error) throw toError(error);
+      return data as CloseRequest;
+    },
+    onSettled: (_d, _e, vars) => queryClient.invalidateQueries({ queryKey: ['close-studio-preview', vars.studioId] }),
+  });
+}
+
+export function useCancelStudioCloseRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { studioId: string; requestId: string }): Promise<CloseRequest> => {
+      const { data, error } = await supabase.rpc('cancel_studio_close_request', { p_request_id: vars.requestId });
+      if (error) throw toError(error);
+      return data as CloseRequest;
+    },
+    onSettled: (_d, _e, vars) => queryClient.invalidateQueries({ queryKey: ['close-studio-preview', vars.studioId] }),
   });
 }

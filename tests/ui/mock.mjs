@@ -107,6 +107,18 @@ const payments = [
 ];
 const passMeta = (id) => { const x = passes.find((p) => p.id === id); return x ? { id: x.id, name: x.name, class_type: x.class_type } : null; };
 const createdStudios = [];
+const closeRequests = [];
+// 남은 수강권(만료 전 + 남은 횟수, 소속 중인 원장 아닌 사람) — DB 의 _studio_open_passes 를 단순화
+const openPasses = (sid) => {
+  const per = {};
+  for (const ps of passes.filter((x) => x.studio_id === sid && x.expires_on >= dateOnly(0) && x.remaining_count > 0)) {
+    const m = members.find((x) => x.studio_id === sid && x.user_id === ps.member_id && x.status === 'active');
+    if (!m || m.role === 'owner') continue;
+    per[ps.member_id] = (per[ps.member_id] ?? 0) + ps.remaining_count;
+  }
+  const list = Object.entries(per).map(([id, remaining]) => ({ name: profileOf(id)?.name ?? id, remaining })).sort((a, b) => b.remaining - a.remaining || (a.name < b.name ? -1 : 1));
+  return { members: list.length, remaining: list.reduce((a, x) => a + x.remaining, 0), list };
+};
 let codeSeq = 0;
 
 const tokenFor = (email) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: users[email].id, email, role: 'authenticated', exp: Math.floor(now / 1000) + 3600 })}.sig`;
@@ -175,6 +187,16 @@ http.createServer(async (req, res) => {
     return send(200, { ok: true, cancelledBookings: 2 });
   }
   if (p === '/__rpc_log') return send(200, rpcLog);
+  // 테스트 제어: 남은 수강권 정리 완료(모두 환불·만료) 상태로
+  if (p === '/__settle') { for (const ps of passes) if (ps.studio_id === url.searchParams.get('studio')) { ps.remaining_count = 0; ps.expires_on = dateOnly(-1); } return send(200, {}); }
+  // 테스트 제어: 다른 기기에서 원장이 운영을 종료한 상황 (소속 모두 탈퇴 + 종료 알림)
+  if (p === '/__close_elsewhere') {
+    const sid = url.searchParams.get('studio'); const uid = url.searchParams.get('user');
+    for (const m of members) if (m.studio_id === sid) m.status = 'left';
+    studios[sid].closed_at = new Date().toISOString();
+    notifications.unshift({ id: 100 + notifications.length, user_id: uid, kind: 'studio_closed', title: studios[sid].name, body: `${studios[sid].name} 이(가) 운영을 종료했어요.\n그동안 이용해 주셔서 감사합니다.`, data: { path: '/notifications' }, created_at: new Date().toISOString(), read_at: null, studio_id: sid });
+    return send(200, {});
+  }
   if (p.startsWith('/rest/v1/')) {
     const me = meOf(req);
     const table = p.slice('/rest/v1/'.length);
@@ -199,19 +221,36 @@ http.createServer(async (req, res) => {
     }
     if (table === 'rpc/regenerate_invite_code') { const s = studios[args.p_studio_id]; s.invite_code = 'RG' + String(++codeSeq).padStart(4, '0'); return send(200, s.invite_code); }
     if (table === 'rpc/set_member_role') { const m = members.find((x) => x.studio_id === args.p_studio_id && x.user_id === args.p_user_id); m.role = args.p_role; return send(200, m); }
-    if (table === 'rpc/close_studio_preview' || table === 'rpc/close_studio') {
+    if (['rpc/close_studio_preview', 'rpc/close_studio', 'rpc/request_studio_close'].includes(table)) {
       const sid = args.p_studio_id; const s = studios[sid];
       const mine = members.find((m) => m.studio_id === sid && m.user_id === me && m.status === 'active');
       if (!s || mine?.role !== 'owner') return send(400, { code: 'P0001', message: '원장만 스튜디오 운영을 종료할 수 있습니다.' });
       const fut = overview.filter((c) => c.studio_id === sid && c.status === 'scheduled' && new Date(c.starts_at) > new Date());
-      const cnt = { classes: fut.length, bookings: fut.reduce((a, c) => a + c.confirmed_count + c.waitlist_count, 0), members: members.filter((m) => m.studio_id === sid && m.status === 'active' && m.user_id !== me).length };
+      const open = openPasses(sid);
+      const reqs = closeRequests.filter((r) => r.studio_id === sid);
+      const cnt = { classes: fut.length, bookings: fut.reduce((a, c) => a + c.confirmed_count + c.waitlist_count, 0), members: members.filter((m) => m.studio_id === sid && m.status === 'active' && m.user_id !== me).length, open, request: reqs[reqs.length - 1] ?? null };
       if (table === 'rpc/close_studio_preview') return send(200, cnt);
+      if (table === 'rpc/request_studio_close') {
+        rpcLog.push({ fn: 'request_studio_close', args: { me, ...args } });
+        if (reqs.some((r) => r.status === 'pending')) return send(400, { code: 'P0001', message: '이미 검토 중인 운영 종료 요청이 있어요.' });
+        const r = { id: 'cr' + (closeRequests.length + 1), studio_id: sid, status: 'pending', reason: String(args.p_reason).trim(), created_at: new Date().toISOString(), decided_at: null, decision_note: null };
+        closeRequests.push(r);
+        return send(200, r);
+      }
       rpcLog.push({ fn: 'close_studio', args: { me, ...args } });
+      if (open.members > 0) return send(400, { code: 'P0001', message: `남은 수강권이 있는 회원이 있어 바로 종료할 수 없어요 (회원 ${open.members}명 · 남은 횟수 ${open.remaining}회). 회원과 정리한 뒤 운영 종료 요청을 보내 주세요.` });
       if (String(args.p_confirm_name ?? '').trim() !== s.name) return send(400, { code: 'P0001', message: `스튜디오 이름이 일치하지 않습니다. "${s.name}" 를 그대로 입력해 주세요.` });
       for (const m of members) if (m.studio_id === sid) m.status = 'left';
       for (const c of fut) c.status = 'cancelled';
       s.closed_at = new Date().toISOString();
       return send(200, { already: false, classes: cnt.classes, bookings: cnt.bookings, notified: cnt.members });
+    }
+    if (table === 'rpc/cancel_studio_close_request') {
+      rpcLog.push({ fn: 'cancel_studio_close_request', args: { me, ...args } });
+      const r = closeRequests.find((x) => x.id === args.p_request_id);
+      if (!r || r.status !== 'pending') return send(400, { code: 'P0001', message: '검토 중인 요청만 취소할 수 있어요.' });
+      r.status = 'cancelled'; r.decided_at = new Date().toISOString();
+      return send(200, r);
     }
     if (table.startsWith('rpc/')) rpcLog.push({ fn: table.slice(4), args });
     if (table === 'rpc/mark_notifications_read') {

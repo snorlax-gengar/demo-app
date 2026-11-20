@@ -576,8 +576,10 @@ await tc('TC-D52', '수업 수정', '정원은 현재 예약 인원보다 줄일
 });
 
 // 16) 스튜디오 운영 종료 (패치 014)
-await tc('TC-D53', '운영 종료', '원장이 스튜디오 운영을 종료하면 앞으로의 수업이 폐강되고 수강권이 복구되며, 남은 사람에게 종료 알림이 1건씩 가고, 모두 탈퇴 처리되어 초대 코드로도 못 들어온다', '실장·이름 틀림 거절 / 미리보기 수업 2·예약 2·인원 3 / 확정 예약 수강권 복구 / 수업별 폐강 알림 0·종료 알림 3 / 소속 전원 탈퇴 / 재참여 거절 / 지난 출석 보존', async () => {
+await tc('TC-D53', '운영 종료', '남은 수강권이 있는 스튜디오는 원장이 바로 종료할 수 없고, 운영 종료 요청 → 운영자 승인으로 종료된다. 승인되면 앞으로의 수업 폐강·수강권 복구·남은 사람에게 종료 알림, 원장에게 승인 알림, 모두 탈퇴, 재참여 불가', '실장 거절 / 원장 바로 종료 → "남은 수강권" 거절 / 미리보기 남은 수강권 회원 1명·10회(8+예약 2) / 요청 → 운영자 알림 1 / 중복 요청·실장 요청 거절 / 앱 사용자는 승인 함수 실행 불가 / 승인 → 수강권 8→10, 종료 알림 3·승인 알림 1, 전원 탈퇴, 재참여 거절, 지난 출석 보존', async () => {
   const own = await newUser(31, '종료원장'); const mgr = await newUser(32, '종료실장'); const ins = await newUser(33, '종료강사'); const mem = await newUser(34, '종료회원');
+  const op = await newUser(38, '운영자');
+  await q(`insert into app_operators(user_id) values ($1) on conflict do nothing`, [op]);
   const C = (await rpc(own, `select * from create_studio('닫을 스튜디오')`))[0];
   for (const u of [mgr, ins, mem]) await rpc(u, `select * from join_studio($1)`, [C.invite_code]);
   await rpc(own, `select set_member_role($1,$2,'manager')`, [C.id, mgr]);
@@ -591,24 +593,80 @@ await tc('TC-D53', '운영 종료', '원장이 스튜디오 운영을 종료하�
   const before = (await q(`select remaining_count r from passes where id=$1`, [pass.id]))[0].r;
 
   await rejects(rpc(mgr, `select close_studio($1,'닫을 스튜디오')`, [C.id]), /원장만 스튜디오 운영을 종료/);
-  await rejects(rpc(own, `select close_studio($1,'다른 이름')`, [C.id]), /스튜디오 이름이 일치하지 않습니다/);
+  await rejects(rpc(own, `select close_studio($1,'닫을 스튜디오')`, [C.id]), /남은 수강권이 있는 회원이 있어 바로 종료할 수 없어요 \(회원 1명 · 남은 횟수 10회\)/);
   const pv = (await rpc(own, `select close_studio_preview($1) r`, [C.id]))[0].r;
-  const r = (await rpc(own, `select close_studio($1,' 닫을 스튜디오 ') r`, [C.id]))[0].r;
+  await rejects(rpc(mgr, `select request_studio_close($1,'정리 완료했습니다')`, [C.id]), /원장만 운영 종료를 요청/);
+  await rejects(rpc(own, `select request_studio_close($1,'짧음')`, [C.id]), /5자 이상/);
+  const req = (await rpc(own, `select * from request_studio_close($1,'회원과 환불 정리를 마쳤습니다')`, [C.id]))[0];
+  await rejects(rpc(own, `select request_studio_close($1,'한 번 더 요청합니다')`, [C.id]), /이미 검토 중인/);
+  const opNote = await q(`select kind, title, body from notifications where user_id=$1`, [op]);
+  const pv2 = (await rpc(own, `select close_studio_preview($1) r`, [C.id]))[0].r;
+  await rejects(rpc(own, `select admin_decide_close_request($1,true,null)`, [req.id]), /permission denied/);
+  const r = (await q(`select admin_decide_close_request($1,true,'회원 3명 환불 확인') r`, [req.id]))[0].r;
 
   const after = (await q(`select remaining_count r from passes where id=$1`, [pass.id]))[0].r;
-  const cls = await q(`select status, count(*)::int n from classes where studio_id=$1 group by 1 order by 1`, [C.id]);
-  const notes = await q(`select kind, count(*)::int n from notifications where studio_id=$1 group by 1 order by 1`, [C.id]);
+  const notes = await q(`select kind, count(*)::int n from notifications where studio_id=$1 and user_id <> $2 group by 1 order by 1`, [C.id, op]);
+  const ownNote = await q(`select kind, body from notifications where user_id=$1 and studio_id=$2`, [own, C.id]);
   const left = (await q(`select count(*) filter (where status='left')::int l, count(*)::int t from studio_members where studio_id=$1`, [C.id]))[0];
   const closed = (await q(`select closed_at is not null c, closed_by = $2 b from studios where id=$1`, [C.id, own]))[0];
+  const st = (await q(`select status, decision_note from studio_close_requests where id=$1`, [req.id]))[0];
   const att = (await q(`select count(*)::int n from bookings where class_id=$1 and status='attended'`, [past.id]))[0].n;
   await rejects(rpc(mem, `select * from join_studio($1)`, [C.invite_code]), /운영을 종료한 스튜디오입니다/);
 
-  assert.deepEqual(pv, { classes: 2, bookings: 2, members: 3 });
-  assert.deepEqual({ classes: r.classes, bookings: r.bookings, notified: r.notified }, { classes: 2, bookings: 2, notified: 3 });
+  assert.deepEqual(pv.open, { members: 1, remaining: 10, list: [{ name: '종료회원', remaining: 10 }] });
+  assert.equal(pv.request, null); assert.equal(pv2.request.status, 'pending');
+  assert.deepEqual(opNote.map((x) => x.kind), ['close_request_new']); assert.match(opNote[0].body, /회원 1명 · 10회/);
+  assert.deepEqual({ classes: r.classes, bookings: r.bookings, notified: r.notified, status: r.status }, { classes: 2, bookings: 2, notified: 3, status: 'approved' });
   assert.equal(after, before + 2);
-  assert.deepEqual(notes, [{ kind: 'studio_closed', n: 3 }]);
-  assert.equal(left.l, left.t); assert.ok(closed.c && closed.b); assert.equal(att, 1);
-  return `미리보기 ${JSON.stringify(pv)} → 폐강 ${r.classes}·취소 ${r.bookings}, 수강권 ${before}→${after}회, 알림 ${notes.map((x) => `${x.kind} ${x.n}`).join(', ')}, 소속 ${left.l}/${left.t} 탈퇴, 재참여 거절, 지난 출석 ${att}건 보존`;
+  assert.deepEqual(notes, [{ kind: 'close_request_approved', n: 1 }, { kind: 'studio_closed', n: 3 }]);
+  assert.equal(ownNote.length, 1); assert.match(ownNote[0].body, /운영자 메모: 회원 3명 환불 확인/);
+  assert.equal(left.l, left.t); assert.ok(closed.c && closed.b); assert.equal(att, 1); assert.equal(st.status, 'approved');
+  return `바로 종료 거절(회원 1명·10회) → 요청(운영자 알림 ${opNote.length}건) → 앱에서 승인 함수 실행 불가 → 운영자 승인: 폐강 ${r.classes}·취소 ${r.bookings}, 수강권 ${before}→${after}회, 알림 ${notes.map((x) => `${x.kind} ${x.n}`).join(', ')}, 소속 ${left.l}/${left.t} 탈퇴, 재참여 거절, 지난 출석 ${att}건 보존`;
+});
+await tc('TC-D55', '운영 종료', '남은 수강권이 없는 스튜디오(수강권 없음·만료)는 원장이 바로 종료할 수 있고, 이 경우 요청은 받지 않는다', '요청 → "바로 운영을 종료할 수 있어요" 거절 / 이름 확인 후 바로 종료 성공·회원 알림 2', async () => {
+  const own = await newUser(40, '바로원장'); const m1 = await newUser(41, '만료회원'); const m2 = await newUser(42, '무권회원');
+  const S = (await rpc(own, `select * from create_studio('바로 닫는 곳')`))[0];
+  for (const u of [m1, m2]) await rpc(u, `select * from join_studio($1)`, [S.invite_code]);
+  await q(`insert into passes(studio_id,member_id,class_type,name,total_count,remaining_count,starts_on,expires_on) values ($1,$2,'group','만료권',10,6,current_date-60,current_date-1)`, [S.id, m1]);
+  const pv = (await rpc(own, `select close_studio_preview($1) r`, [S.id]))[0].r;
+  await rejects(rpc(own, `select request_studio_close($1,'정리할 것이 없습니다')`, [S.id]), /바로 운영을 종료할 수 있어요/);
+  const r = (await rpc(own, `select close_studio($1,'바로 닫는 곳') r`, [S.id]))[0].r;
+  assert.deepEqual(pv.open, { members: 0, remaining: 0, list: [] }); assert.equal(r.notified, 2);
+  return `만료 수강권(잔여 6회)·수강권 없음 → 남은 수강권 0 → 요청 거절, 바로 종료 성공(알림 ${r.notified})`;
+});
+await tc('TC-D56', '운영 종료', '수강권을 중지하거나 횟수를 줄여 놓고 닫는 우회가 막힌다: 중지한 수강권, 최근 30일 안에 줄인 횟수도 남은 것으로 본다', '중지 후에도 5회 / 0회로 줄여도 5회 → 바로 종료 거절 / 줄인 지 31일 지나면 0회 → 종료 가능', async () => {
+  const own = await newUser(44, '우회원장'); const m = await newUser(45, '우회회원');
+  const S = (await rpc(own, `select * from create_studio('우회 시도')`))[0];
+  await rpc(m, `select * from join_studio($1)`, [S.invite_code]);
+  const ps = (await rpc(own, `select * from issue_pass($1,$2,'group','5회',5,current_date,current_date+30)`, [S.id, m]))[0];
+  const open = async () => (await q(`select _studio_open_passes($1) r`, [S.id]))[0].r;
+  await rpc(own, `select set_pass_active($1,false,'정리')`, [ps.id]);
+  const a1 = await open();
+  await rpc(own, `select admin_adjust_pass($1,-5,'환불했다고 함')`, [ps.id]);
+  const a2 = await open();
+  await rejects(rpc(own, `select close_studio($1,'우회 시도')`, [S.id]), /남은 수강권이 있는 회원이 있어/);
+  await q(`update pass_logs set created_at = now() - interval '31 days' where pass_id=$1 and reason='admin_adjust'`, [ps.id]);
+  const a3 = await open();
+  const r = (await rpc(own, `select close_studio($1,'우회 시도') r`, [S.id]))[0].r;
+  assert.equal(a1.remaining, 5); assert.equal(a2.remaining, 5); assert.equal(a3.remaining, 0); assert.equal(r.already, false);
+  return `중지 후 ${a1.remaining}회 · 0회로 줄인 직후 ${a2.remaining}회(바로 종료 거절) · 31일 지난 뒤 ${a3.remaining}회 → 종료 가능`;
+});
+await tc('TC-D57', '운영 종료', '원장은 검토 중인 요청을 취소할 수 있고, 운영자가 반려하면 스튜디오는 그대로이며 원장에게 반려 사유가 담긴 알림이 간다. 반려 후 다시 요청할 수 있다', '취소 → cancelled / 재요청 → 반려(메모) → 원장 알림 "운영자 메모" · 스튜디오 운영 중 / 다시 요청 가능 / 처리된 요청 재처리 거절', async () => {
+  const own = await newUser(47, '반려원장'); const m = await newUser(48, '반려회원');
+  const S = (await rpc(own, `select * from create_studio('반려될 곳')`))[0];
+  await rpc(m, `select * from join_studio($1)`, [S.invite_code]);
+  await rpc(own, `select * from issue_pass($1,$2,'group','3회',3,current_date,current_date+30)`, [S.id, m]);
+  const r1 = (await rpc(own, `select * from request_studio_close($1,'첫 번째 요청입니다')`, [S.id]))[0];
+  const c = (await rpc(own, `select * from cancel_studio_close_request($1)`, [r1.id]))[0];
+  const r2 = (await rpc(own, `select * from request_studio_close($1,'회원과 협의 중입니다')`, [S.id]))[0];
+  const d = (await q(`select admin_decide_close_request($1,false,'회원 동의 확인 필요') r`, [r2.id]))[0].r;
+  await rejects(q(`select admin_decide_close_request($1,true,null)`, [r2.id]), /이미 처리된 요청/);
+  const note = (await q(`select kind, body from notifications where user_id=$1 and studio_id=$2`, [own, S.id]))[0];
+  const open = (await q(`select closed_at is null o from studios where id=$1`, [S.id]))[0].o;
+  const r3 = (await rpc(own, `select * from request_studio_close($1,'회원 동의를 받았습니다')`, [S.id]))[0];
+  assert.equal(c.status, 'cancelled'); assert.equal(d.status, 'rejected'); assert.equal(note.kind, 'close_request_rejected');
+  assert.match(note.body, /운영자 메모: 회원 동의 확인 필요/); assert.ok(open); assert.equal(r3.status, 'pending');
+  return `요청 취소(${c.status}) → 재요청 → 반려(원장 알림: "${note.body.split('\n')[1]}") · 스튜디오 운영 중 → 다시 요청 ${r3.status}`;
 });
 await tc('TC-D54', '운영 종료', '혼자 남은 스튜디오의 원장이 탈퇴하면 스튜디오도 함께 운영 종료되고(예정 수업 정리), 다른 사람이 남아 있으면 "원장 지정 또는 운영 종료"를 안내하며 막는다', '혼자: 담당 예정 수업이 있어도 탈퇴 성공·스튜디오 종료·수업 폐강 / 회원 있음: 거절 문구에 "운영을 종료"', async () => {
   const solo = await newUser(35, '혼자원장');
