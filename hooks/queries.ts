@@ -818,3 +818,38 @@ export function useMarkNotificationsRead() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   });
 }
+
+// ---------- 스튜디오 운영 종료 (원장, 패치 014) ----------
+export interface CloseStudioPreview {
+  classes: number;
+  bookings: number;
+  members: number;
+}
+
+export function useCloseStudioPreview(studioId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['close-studio-preview', studioId],
+    enabled: enabled && !!studioId,
+    queryFn: async (): Promise<CloseStudioPreview> => {
+      const { data, error } = await supabase.rpc('close_studio_preview', { p_studio_id: studioId });
+      if (error) throw toError(error);
+      return data as CloseStudioPreview;
+    },
+  });
+}
+
+export function useCloseStudio() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { studioId: string; confirmName: string }): Promise<CloseStudioPreview & { notified: number }> => {
+      const { data, error } = await supabase.rpc('close_studio', { p_studio_id: vars.studioId, p_confirm_name: vars.confirmName });
+      if (error) throw toError(error);
+      const r = data as { classes: number; bookings: number; notified: number };
+      return { classes: r.classes, bookings: r.bookings, members: r.notified, notified: r.notified };
+    },
+    onSuccess: () => {
+      // 종료 후엔 더 이상 원장이 아니므로 미리보기를 다시 부르지 않는다(권한 오류 방지)
+      void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'close-studio-preview' });
+    },
+  });
+}

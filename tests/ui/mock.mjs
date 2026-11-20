@@ -199,6 +199,20 @@ http.createServer(async (req, res) => {
     }
     if (table === 'rpc/regenerate_invite_code') { const s = studios[args.p_studio_id]; s.invite_code = 'RG' + String(++codeSeq).padStart(4, '0'); return send(200, s.invite_code); }
     if (table === 'rpc/set_member_role') { const m = members.find((x) => x.studio_id === args.p_studio_id && x.user_id === args.p_user_id); m.role = args.p_role; return send(200, m); }
+    if (table === 'rpc/close_studio_preview' || table === 'rpc/close_studio') {
+      const sid = args.p_studio_id; const s = studios[sid];
+      const mine = members.find((m) => m.studio_id === sid && m.user_id === me && m.status === 'active');
+      if (!s || mine?.role !== 'owner') return send(400, { code: 'P0001', message: '원장만 스튜디오 운영을 종료할 수 있습니다.' });
+      const fut = overview.filter((c) => c.studio_id === sid && c.status === 'scheduled' && new Date(c.starts_at) > new Date());
+      const cnt = { classes: fut.length, bookings: fut.reduce((a, c) => a + c.confirmed_count + c.waitlist_count, 0), members: members.filter((m) => m.studio_id === sid && m.status === 'active' && m.user_id !== me).length };
+      if (table === 'rpc/close_studio_preview') return send(200, cnt);
+      rpcLog.push({ fn: 'close_studio', args: { me, ...args } });
+      if (String(args.p_confirm_name ?? '').trim() !== s.name) return send(400, { code: 'P0001', message: `스튜디오 이름이 일치하지 않습니다. "${s.name}" 를 그대로 입력해 주세요.` });
+      for (const m of members) if (m.studio_id === sid) m.status = 'left';
+      for (const c of fut) c.status = 'cancelled';
+      s.closed_at = new Date().toISOString();
+      return send(200, { already: false, classes: cnt.classes, bookings: cnt.bookings, notified: cnt.members });
+    }
     if (table.startsWith('rpc/')) rpcLog.push({ fn: table.slice(4), args });
     if (table === 'rpc/mark_notifications_read') {
       let n = 0;

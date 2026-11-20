@@ -410,6 +410,11 @@ export function ProfileScreen() {
           <Pressable onPress={() => router.push('/legal/privacy')} accessibilityRole="link" hitSlop={8}>
             <Text className="text-xs font-semibold text-stone-600 underline">개인정보 처리방침</Text>
           </Pressable>
+          {isOwner ? (
+            <Pressable onPress={() => router.push('/(admin)/close-studio')} accessibilityRole="link" hitSlop={8}>
+              <Text className="text-xs text-stone-400 underline">스튜디오 운영 종료</Text>
+            </Pressable>
+          ) : null}
           <Pressable onPress={() => router.push('/withdraw')} accessibilityRole="link" hitSlop={8}>
             <Text className="text-xs text-stone-400 underline">회원 탈퇴</Text>
           </Pressable>

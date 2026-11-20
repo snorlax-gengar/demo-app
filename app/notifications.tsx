@@ -16,6 +16,7 @@ const KIND_ICON: Record<string, { name: keyof typeof Ionicons.glyphMap; color: s
   cancelled_by_staff: { name: 'close-circle', color: '#78716C' },
   class_cancelled: { name: 'alert-circle', color: '#E11D48' },
   reminder: { name: 'notifications', color: '#16A866' },
+  studio_closed: { name: 'business', color: '#78716C' },
 };
 
 /** 알림함: 예약 확정·대기 승격·취소·폐강·전날 알림. 열면 모두 읽음 처리 */
