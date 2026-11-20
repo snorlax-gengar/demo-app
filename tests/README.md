@@ -49,7 +49,7 @@ node --experimental-strip-types supabase/functions/delete-account/core.test.mjs 
 
 ## 보안 점검 (`tests/db/audit.mjs`)
 Supabase 기본 권한(새 표·함수를 anon/authenticated 에 전부 허용)을 재현한 뒤 schema.sql 을 설치하고
-RLS·비로그인 차단·직접 쓰기 권한·SECURITY DEFINER 설정·내부 함수 차단을 확인합니다. 케이스 ID: TC-S01 ~ TC-S07.
+RLS·비로그인 차단·직접 쓰기 권한·SECURITY DEFINER 설정·내부 함수 차단·사진 저장소 정책을 확인합니다. 케이스 ID: TC-S01 ~ TC-S09.
 ```bash
 cd tests/db && node audit.mjs ../../supabase/schema.sql audit.json
 ```

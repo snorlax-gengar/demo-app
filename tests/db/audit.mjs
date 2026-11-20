@@ -139,6 +139,18 @@ await tc('TC-S08', '직원이 cancel_class()를 우회해 status 를 직접 바�
   return 'status 직접 변경 거절, 예정 수업 수정 허용, 과거·시작·폐강 수업 변경 모두 거절';
 });
 
+await tc('TC-S09', '소개 페이지 사진 저장소(studio-photos) 정책: 원장·실장이 자기 스튜디오 폴더에서만 조회·올리기·바꾸기·지우기를 할 수 있다 (지우기는 조회 정책도 있어야 동작 — F-10)', 'select·insert·update·delete 정책 4개, 모두 bucket_id 와 is_studio_admin(폴더) 로 제한', async () => {
+  // PGlite 에는 storage 스키마가 없어 정책 정의를 schema.sql 에서 직접 확인한다
+  const sql = fs.readFileSync(schemaPath, 'utf8');
+  const found = {};
+  for (const m of sql.matchAll(/create policy (studio_photos_admin_\w+) on storage\.objects for (\w+) to authenticated\s+(using|with check) \(([^;]+?)\);/g)) found[m[2]] = m[4];
+  const need = ['select', 'insert', 'update', 'delete'];
+  const missing = need.filter((c) => !found[c]);
+  assert.deepEqual(missing, [], `없는 정책: ${missing.join(',')}`);
+  for (const c of need) assert.match(found[c], /bucket_id = 'studio-photos' and public\.is_studio_admin\(\(\(storage\.foldername\(name\)\)\[1\]\)::uuid\)/, c);
+  return `정책 ${need.join('·')} 4개 모두 studio-photos + 자기 스튜디오 폴더로 제한`;
+});
+
 const passed = results.filter((r) => r.pass).length;
 console.log(`\n${passed}/${results.length} passed`);
 fs.writeFileSync(outPath, JSON.stringify({ results }, null, 2));

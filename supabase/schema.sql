@@ -2211,9 +2211,13 @@ begin
     values ('studio-photos', 'studio-photos', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
     on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 
+    drop policy if exists studio_photos_admin_select on storage.objects;
     drop policy if exists studio_photos_admin_insert on storage.objects;
     drop policy if exists studio_photos_admin_update on storage.objects;
     drop policy if exists studio_photos_admin_delete on storage.objects;
+    -- 지우기(remove)는 delete + select 권한이 둘 다 있어야 한다 (공개 URL 읽기에는 필요 없음)
+    create policy studio_photos_admin_select on storage.objects for select to authenticated
+      using (bucket_id = 'studio-photos' and public.is_studio_admin(((storage.foldername(name))[1])::uuid));
     create policy studio_photos_admin_insert on storage.objects for insert to authenticated
       with check (bucket_id = 'studio-photos' and public.is_studio_admin(((storage.foldername(name))[1])::uuid));
     create policy studio_photos_admin_update on storage.objects for update to authenticated

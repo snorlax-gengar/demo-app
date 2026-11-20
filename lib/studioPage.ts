@@ -74,9 +74,15 @@ export const formatPhone = (digits: string) => {
   return digits;
 };
 
-/** 고른 사진을 긴 변 1600px JPEG 로 줄여 studio-photos/<studioId>/ 에 올리고 경로를 돌려준다 */
-export async function uploadStudioPhoto(studioId: string, uri: string): Promise<string> {
-  const resized = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1600 } }], {
+const MAX_SIDE = 1600;
+
+/** 고른 사진을 JPEG 로 바꿔(긴 변이 1600px 보다 크면 줄이고, 작으면 그대로) studio-photos/<studioId>/ 에 올리고 경로를 돌려준다 */
+export async function uploadStudioPhoto(studioId: string, uri: string, size?: { width?: number; height?: number }): Promise<string> {
+  const w = size?.width ?? 0;
+  const h = size?.height ?? 0;
+  // 크기를 모르면 예전처럼 가로 1600 으로 맞춘다. 알면 긴 변만 1600 으로 줄인다 (작은 사진을 키우지 않음)
+  const actions = !w || !h ? [{ resize: { width: MAX_SIDE } }] : Math.max(w, h) <= MAX_SIDE ? [] : [{ resize: w >= h ? { width: MAX_SIDE } : { height: MAX_SIDE } }];
+  const resized = await ImageManipulator.manipulateAsync(uri, actions, {
     compress: 0.8,
     format: ImageManipulator.SaveFormat.JPEG,
   });
@@ -89,5 +95,8 @@ export async function uploadStudioPhoto(studioId: string, uri: string): Promise<
 
 /** 지운 사진 파일 정리 (실패해도 페이지 저장에는 영향 없음) */
 export async function removeStudioPhotos(paths: string[]) {
-  if (paths.length) await supabase.storage.from(PHOTO_BUCKET).remove(paths);
+  if (!paths.length) return;
+  const { data, error } = await supabase.storage.from(PHOTO_BUCKET).remove(paths);
+  // 권한이 모자라면 오류 없이 0건이 돌아온다 → 개발 중에 바로 알 수 있게 경고
+  if (error || (data?.length ?? 0) < paths.length) console.warn('[studio-photos] 지우지 못한 사진', paths.length - (data?.length ?? 0), error?.message ?? '');
 }

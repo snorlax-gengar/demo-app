@@ -114,7 +114,7 @@ export default function StudioPageScreen() {
     setUploading(assets.length);
     try {
       for (const a of assets) {
-        const path = await uploadStudioPhoto(studioId, a.uri);
+        const path = await uploadStudioPhoto(studioId, a.uri, { width: a.width, height: a.height });
         setForm((f) => (f ? { ...f, photos: [...f.photos, path].slice(0, MAX_PHOTOS) } : f));
         setUploading((n) => n - 1);
       }
