@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "com.gengarileo.piq",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
